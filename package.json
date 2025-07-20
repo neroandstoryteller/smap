@@ -21,6 +21,7 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"@google/generative-ai": "^0.24.1",
 		"comcigan-parser": "^1.0.0",
 		"firebase": "^12.0.0",
 		"konva": "^9.3.22"

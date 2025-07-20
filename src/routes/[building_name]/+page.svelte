@@ -16,6 +16,9 @@
 	let transformer: Konva.Transformer;
 	let selectedShape: Konva.Group | null = null;
 	let fillColor = '#FF6347';
+	let isLoadingFromImage = false;
+	let errorFromImage: string | null = null;
+	let fileInput: HTMLInputElement;
 
 	function genId(): string {
 		return `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -51,10 +54,13 @@
 		} else {
 			shape = new KonvaModule.Rect({
 				...newShapeConfig,
+				width: shapeConfig.width || 100,
+				height: shapeConfig.height || 80,
 				x: 0,
 				y: 0
 			});
 		}
+		shape.name('main-shape');
 
 		const textNode = new KonvaModule.Text({
 			text: text,
@@ -67,6 +73,7 @@
 			verticalAlign: 'middle',
 			padding: 5
 		});
+		textNode.name('text-node');
 
 		group.add(shape);
 		group.add(textNode);
@@ -105,13 +112,59 @@
 		addGroup(shapeConfig, '새 원');
 	}
 
+	async function extractShapesFromImage(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) {
+			return;
+		}
+		const imageFile = input.files[0];
+
+		isLoadingFromImage = true;
+		errorFromImage = null;
+
+		const formData = new FormData();
+		formData.append('image', imageFile);
+
+		try {
+			const response = await fetch('/api/extract-shapes', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				const err = await response.json();
+				throw new Error(err.error || '이미지에서 도형을 추출하지 못했습니다.');
+			}
+
+			const { shapes } = await response.json();
+
+			// 기존 도형 모두 삭제
+			layer.destroyChildren();
+			layer.add(transformer); // Transformer는 유지
+
+			// 새로 받은 도형 추가
+			shapes.forEach((shapeData: any) => {
+				addGroup(shapeData, shapeData.text || '');
+			});
+
+			layer.draw();
+
+		} catch (e: any) {
+			errorFromImage = e.message;
+		} finally {
+			isLoadingFromImage = false;
+			// 동일한 파일을 다시 선택할 수 있도록 입력 값 초기화
+			input.value = '';
+		}
+	}
+
 	function bindShapeEvents(group: Konva.Group) {
 		group.on('mousedown touchstart', () => selectShape(group));
 		group.on('dragend', () => layer.draw());
 
 		group.on('transformend', () => {
-			const shape = group.findOne('Shape') as Konva.Shape;
-			const text = group.findOne('Text') as Konva.Text;
+			const shape = group.findOne('.main-shape') as Konva.Shape;
+			const text = group.findOne('.text-node') as Konva.Text;
 			if (!shape) return;
 
 			const scaleX = group.scaleX();
@@ -145,8 +198,8 @@
 	}
 
 	function editText(group: Konva.Group) {
-		const textNode = group.findOne('Text') as Konva.Text;
-		const shape = group.findOne('Shape') as Konva.Shape;
+		const textNode = group.findOne('.text-node') as Konva.Text;
+		const shape = group.findOne('.main-shape') as Konva.Shape;
 		if (!textNode || !shape) return;
 
 		textNode.hide();
@@ -214,7 +267,7 @@
 
 	function selectShape(group: Konva.Group) {
 		selectedShape = group;
-		const shape = group.findOne('Shape') as Konva.Shape;
+		const shape = group.findOne('.main-shape') as Konva.Shape;
 		if (shape) {
 			const shapeFill = shape.fill();
 			if (typeof shapeFill === 'string') fillColor = shapeFill;
@@ -357,6 +410,20 @@
 	<button on:click={saveCanvasState} disabled={!konvaLoaded}>저장하기</button>
 	<input type="color" bind:value={fillColor} title="채우기 색상" />
 	<button on:click={deleteShape} disabled={!selectedShape}>삭제</button>
+	
+	<input
+		type="file"
+		bind:this={fileInput}
+		on:change={extractShapesFromImage}
+		accept="image/*"
+		style="display: none;"
+	/>
+	<button on:click={() => fileInput.click()} disabled={isLoadingFromImage || !konvaLoaded}>
+		{isLoadingFromImage ? '처리 중...' : '사진으로 다이어그램 만들기'}
+	</button>
+	{#if errorFromImage}
+		<span class="error-text">{errorFromImage}</span>
+	{/if}
 </div>
 
 <div id="canvas-container" class="canvas_container" />
@@ -377,6 +444,7 @@
 		padding: 8px;
 		border-radius: 6px;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		align-items: center;
 	}
 	.canvas_container {
 		width: 100vw;
@@ -386,5 +454,9 @@
 		padding: 8px 12px;
 		font-size: 14px;
 		cursor: pointer;
+	}
+	.error-text {
+		color: crimson;
+		font-size: 14px;
 	}
 </style>
