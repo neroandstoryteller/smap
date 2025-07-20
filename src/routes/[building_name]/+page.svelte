@@ -253,19 +253,19 @@
 			const shapeData: ShapeData = {
 				id: group.id(),
 				type: shape.getClassName() as 'Rect' | 'Circle',
-				x: group.x(),
-				y: group.y(),
-				fill: shape.fill() as string,
-				stroke: shape.stroke() as string,
-				strokeWidth: shape.strokeWidth(),
+				x: group.x() || 0,
+				y: group.y() || 0,
+				fill: (shape.fill() as string) || '#FFFFFF',
+				stroke: (shape.stroke() as string) || '#000000',
+				strokeWidth: shape.strokeWidth() || 1,
 				text: text ? text.text() : ''
 			};
 
 			if (shape instanceof KonvaModule.Rect) {
-				shapeData.width = shape.width();
-				shapeData.height = shape.height();
+				shapeData.width = shape.width() || 0;
+				shapeData.height = shape.height() || 0;
 			} else if (shape instanceof KonvaModule.Circle) {
-				shapeData.radius = shape.radius();
+				shapeData.radius = shape.radius() || 0;
 			}
 			shapesToSave.push(shapeData);
 		});

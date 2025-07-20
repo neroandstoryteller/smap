@@ -4,8 +4,8 @@ import type { PageLoad } from './$types';
 export const load: PageLoad = async ({ params, fetch }) => {
 	const buildingName = params.building_name;
 
-	// Make fetch available to loadShapes if it needs it for the fallback
-	const shapes = await loadShapes(buildingName);
+	// Pass the SvelteKit fetch to loadShapes to handle SSR API calls
+	const shapes = await loadShapes(buildingName, fetch);
 
 	return {
 		buildingName,
