@@ -19,6 +19,10 @@
 	let isLoadingFromImage = false;
 	let errorFromImage: string | null = null;
 	let fileInput: HTMLInputElement;
+	let lineAnchors: Konva.Circle[] = [];
+	let isDrawingLine = false;
+	let currentLine: Konva.Line | null = null;
+	let lineStartPoint: { x: number; y: number } | null = null;
 
 	function genId(): string {
 		return `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -32,7 +36,7 @@
 			draggable: true
 		});
 
-		const shapeType = shapeConfig.type as 'Rect' | 'Circle';
+		const shapeType = shapeConfig.type as 'Rect' | 'Circle' | 'Line';
 		let shape: Konva.Shape;
 
 		const newShapeConfig = { ...shapeConfig };
@@ -51,7 +55,15 @@
 				x: radius,
 				y: radius
 			});
+		} else if (shapeType === 'Line') {
+			shape = new KonvaModule.Line({
+				...newShapeConfig,
+				points: shapeConfig.points,
+				stroke: newShapeConfig.stroke || '#000000',
+				strokeWidth: newShapeConfig.strokeWidth || 5,
+			});
 		} else {
+			// 기본값을 Rect로 처리
 			shape = new KonvaModule.Rect({
 				...newShapeConfig,
 				width: shapeConfig.width || 100,
@@ -110,6 +122,11 @@
 			strokeWidth: 2
 		};
 		addGroup(shapeConfig, '새 원');
+	}
+
+	function toggleDrawingLine() {
+		isDrawingLine = !isDrawingLine;
+		stage.draggable(!isDrawingLine); // 선 그리는 동안 스테이지 드래그 비활성화
 	}
 
 	async function extractShapesFromImage(event: Event) {
@@ -191,6 +208,7 @@
 					text.height(newHeight);
 				}
 			}
+			// Line transform logic is removed as per user request
 			layer.draw();
 		});
 
@@ -265,28 +283,94 @@
 		setTimeout(() => window.addEventListener('click', handleOutsideClick), 0);
 	}
 
-	function selectShape(group: Konva.Group) {
-		selectedShape = group;
-		const shape = group.findOne('.main-shape') as Konva.Shape;
-		if (shape) {
-			const shapeFill = shape.fill();
-			if (typeof shapeFill === 'string') fillColor = shapeFill;
+	function hideLineAnchors() {
+		if (lineAnchors.length > 0) {
+			lineAnchors.forEach((anchor) => anchor.destroy());
+			lineAnchors = [];
 		}
-		transformer.nodes([group]);
-		layer.draw();
+		if (selectedShape) {
+			selectedShape.off('dragmove.anchors');
+		}
 	}
 
-	function clearSelection(e: Konva.KonvaEventObject<MouseEvent>) {
-		if (e.target === stage) {
-			selectedShape = null;
-			transformer.nodes([]);
-			layer.draw();
+	function updateLineFromAnchors(group: Konva.Group, line: Konva.Line) {
+		const startAnchor = lineAnchors[0];
+		const endAnchor = lineAnchors[1];
+		const startPos = startAnchor.position();
+		const endPos = endAnchor.position();
+		group.position(startPos);
+		line.points([0, 0, endPos.x - startPos.x, endPos.y - startPos.y]);
+		layer.batchDraw();
+	}
+
+	function showLineAnchors(group: Konva.Group) {
+		const line = group.findOne('.main-shape') as Konva.Line;
+		if (!line) return;
+
+		const points = line.points();
+		const startAbs = group.position();
+		const endAbs = {
+			x: startAbs.x + points[2],
+			y: startAbs.y + points[3]
+		};
+
+		const anchorPoints = [startAbs, endAbs];
+		anchorPoints.forEach((pos) => {
+			const anchor = new KonvaModule.Circle({
+				x: pos.x,
+				y: pos.y,
+				radius: 8,
+				fill: 'royalblue',
+				stroke: 'white',
+				strokeWidth: 2,
+				draggable: true
+			});
+			layer.add(anchor);
+			lineAnchors.push(anchor);
+
+			anchor.on('dragmove', () => {
+				updateLineFromAnchors(group, line);
+			});
+		});
+
+		group.on('dragmove.anchors', () => {
+			const newPoints = (group.findOne('.main-shape') as Konva.Line).points();
+			const newStartAbs = group.position();
+			const newEndAbs = {
+				x: newStartAbs.x + newPoints[2],
+				y: newStartAbs.y + newPoints[3]
+			};
+			const positions = [newStartAbs, newEndAbs];
+			lineAnchors.forEach((a, i) => a.position(positions[i]));
+			layer.batchDraw();
+		});
+	}
+
+	function selectShape(group: Konva.Group) {
+		hideLineAnchors();
+		transformer.nodes([]);
+
+		selectedShape = group;
+		const shape = group.findOne('.main-shape') as Konva.Shape;
+		if (!shape) return;
+
+		const shapeFill = shape.fill();
+		if (typeof shapeFill === 'string') {
+			fillColor = shapeFill;
 		}
+
+		if (shape instanceof KonvaModule.Line) {
+			showLineAnchors(group);
+		} else {
+			transformer.nodes([group]);
+		}
+		layer.draw();
 	}
 
 	function deleteShape() {
 		if (selectedShape) {
 			transformer.nodes([]);
+			hideLineAnchors();
 			selectedShape.destroy();
 			selectedShape = null;
 			layer.draw();
@@ -299,13 +383,13 @@
 
 		groups.forEach((groupNode) => {
 			const group = groupNode as Konva.Group;
-			const shape = group.findOne('Shape') as Konva.Shape;
-			const text = group.findOne('Text') as Konva.Text;
+			const shape = group.findOne('.main-shape') as Konva.Shape;
+			const text = group.findOne('.text-node') as Konva.Text;
 			if (!shape) return;
 
 			const shapeData: ShapeData = {
 				id: group.id(),
-				type: shape.getClassName() as 'Rect' | 'Circle',
+				type: shape.getClassName() as 'Rect' | 'Circle' | 'Line',
 				x: group.x() || 0,
 				y: group.y() || 0,
 				fill: (shape.fill() as string) || '#FFFFFF',
@@ -319,6 +403,8 @@
 				shapeData.height = shape.height() || 0;
 			} else if (shape instanceof KonvaModule.Circle) {
 				shapeData.radius = shape.radius() || 0;
+			} else if (shape instanceof KonvaModule.Line) {
+				shapeData.points = shape.points();
 			}
 			shapesToSave.push(shapeData);
 		});
@@ -372,7 +458,69 @@
 				addGroup(shapeData, shapeData.text || '');
 			});
 
-			stage.on('mousedown touchstart', clearSelection);
+			stage.on('mousedown touchstart', (e) => {
+				// 1. Clear selection logic
+				if (e.target === stage) {
+					selectedShape = null;
+					transformer.nodes([]);
+					hideLineAnchors();
+					layer.draw();
+				}
+
+				// 2. Start drawing line logic
+				if (!isDrawingLine || e.target !== stage) {
+					return;
+				}
+				const pos = stage.getPointerPosition();
+				if (!pos) return;
+
+				lineStartPoint = { x: pos.x, y: pos.y };
+				currentLine = new KonvaModule.Line({
+					stroke: fillColor,
+					strokeWidth: 5,
+					points: [pos.x, pos.y, pos.x, pos.y]
+				});
+				layer.add(currentLine);
+			});
+
+			stage.on('mousemove', () => {
+				if (!isDrawingLine || !currentLine || !lineStartPoint) return;
+				const pos = stage.getPointerPosition();
+				if (!pos) return;
+				const newPoints = [lineStartPoint.x, lineStartPoint.y, pos.x, pos.y];
+				currentLine.points(newPoints);
+				layer.batchDraw();
+			});
+
+			stage.on('mouseup touchend', () => {
+				if (!isDrawingLine || !currentLine) return;
+
+				const points = currentLine.points();
+				const start = { x: points[0], y: points[1] };
+				const end = { x: points[2], y: points[3] };
+
+				if (Math.hypot(end.x - start.x, end.y - start.y) > 5) {
+					const lineGroup = new KonvaModule.Group({
+						x: start.x,
+						y: start.y,
+						draggable: true
+					});
+					currentLine.points([0, 0, end.x - start.x, end.y - start.y]);
+					currentLine.name('main-shape');
+					lineGroup.add(currentLine);
+					layer.add(lineGroup);
+					bindShapeEvents(lineGroup);
+				} else {
+					currentLine.destroy();
+				}
+
+				isDrawingLine = false;
+				currentLine = null;
+				lineStartPoint = null;
+				stage.draggable(true);
+				layer.draw();
+			});
+
 			konvaLoaded = true;
 
 			const scaleBy = 1.05;
@@ -407,6 +555,7 @@
 <div class="toolbar_container">
 	<button on:click={addRect} disabled={!konvaLoaded}>사각형 추가</button>
 	<button on:click={addCircle} disabled={!konvaLoaded}>원 추가</button>
+	<button on:click={toggleDrawingLine} class:active={isDrawingLine} disabled={!konvaLoaded}>선 그리기</button>
 	<button on:click={saveCanvasState} disabled={!konvaLoaded}>저장하기</button>
 	<input type="color" bind:value={fillColor} title="채우기 색상" />
 	<button on:click={deleteShape} disabled={!selectedShape}>삭제</button>
@@ -454,6 +603,9 @@
 		padding: 8px 12px;
 		font-size: 14px;
 		cursor: pointer;
+	}
+	button.active {
+		background-color: #a0c4ff; /* 활성화 시 색상 변경 */
 	}
 	.error-text {
 		color: crimson;

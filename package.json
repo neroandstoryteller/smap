@@ -22,8 +22,10 @@
 	},
 	"dependencies": {
 		"@google/generative-ai": "^0.24.1",
+		"@types/three": "^0.178.1",
 		"comcigan-parser": "^1.0.0",
 		"firebase": "^12.0.0",
-		"konva": "^9.3.22"
+		"konva": "^9.3.22",
+		"three": "^0.178.0"
 	}
 }
