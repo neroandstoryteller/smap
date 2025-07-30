@@ -17,7 +17,7 @@
         map: "/map",
         search: "/search",
         login: "/login",
-        signin: "/signin",
+        signup: "/signup",
     })
 </script>
 
@@ -54,7 +54,7 @@
                         <span class="description" transition:fade>로그인</span>
                     {/if}
                 </a>
-                <a class:activated={gotoLink.signin === path} href="{gotoLink.signin}" class="li">
+                <a class:activated={gotoLink.signup === path} href="{gotoLink.signup}" class="li">
                     <span class="material-symbols-outlined">person_add</span>
                     {#if isSidebarOpen}
                         <span class="description" transition:fade>회원가입</span>
