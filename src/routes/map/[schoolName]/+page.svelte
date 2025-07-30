@@ -578,7 +578,7 @@
 <div id="canvas-container" class="canvas_container" />
 
 <style lang="scss">
-  @import '$lib/style/main.scss';
+  @use '$lib/style/main.scss' as *;
 
   .toolbar_container {
     position: absolute;

@@ -76,7 +76,7 @@
 </div>
 
 <style lang="scss">
-    @import "$lib/style/main.scss";
+    @use '$lib/style/main.scss' as *;
 
     .overlay{
         position: fixed;

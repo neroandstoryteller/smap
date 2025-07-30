@@ -70,7 +70,7 @@
 </div>
 
 <style lang="scss">
-	@import '$lib/style/main.scss';
+	@use '$lib/style/main.scss' as *;
 
 	.search-bubble{
 		width: 100%;
