@@ -2,13 +2,13 @@ import { loadShapes } from '$lib/firestore';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-	const buildingName = params.building_name;
+	const schoolName = params.schoolName;
 
 	// Pass the SvelteKit fetch to loadShapes to handle SSR API calls
-	const shapes = await loadShapes(buildingName, fetch);
+	const shapes = await loadShapes(schoolName, fetch);
 
 	return {
-		buildingName,
+		schoolName,
 		shapes
 	};
 }; 

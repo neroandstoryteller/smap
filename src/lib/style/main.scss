@@ -1,0 +1,148 @@
+$colorBlack: black;
+$color160: rgb(160, 160, 160);
+$colorDarker: rgb(170, 170, 170);
+$colorDark: rgb(193, 193, 193);
+$colorMediumDarker: rgb(182, 184, 190);
+$colorMediumDark: rgb(204, 206, 212);
+$colorMedium: rgb(226, 229, 232);
+$colorMediumBright: rgb(234, 236, 238);
+$colorBright: rgb(242, 243, 245);
+$colorBrighter: rgb(248, 249, 250);
+$colorWhite: rgb(255, 255, 255);
+
+$colorSymbolGreen: #3BFF66;
+$colorSymbolLime: #b0ff65;
+
+$boxShadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+$gradient: linear-gradient(135deg, #00ffaf, #b0ff65);
+
+$transition: 0.3s ease;
+
+// Font Sizes
+$font-size-tiny: 12px;
+$font-size-small: 14px;
+$font-size-medium: 16px;
+$font-size-large: 20px;
+$font-size-xl: 24px;
+$font-size-xxl: 50px;
+
+// Font Weights
+$font-weight-light: 300;
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 700;
+
+// Font Colors
+$color-text-primary: #2D3748;
+$color-text-secondary: #616161;
+$color-text-tertiary: #9e9e9e;
+$color-text-inverse: #ffffff;
+$color-text-accent: #0062cc;
+$color-text-error: #d32f2f;
+
+// Typography Mixins
+@mixin typography-tiny {
+  font-size: $font-size-tiny;
+  font-weight: $font-weight-regular;
+  color: $color-text-tertiary;
+  line-height: 1.4;
+}
+
+@mixin typography-small {
+  font-size: $font-size-small;
+  font-weight: $font-weight-regular;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}
+
+@mixin typography-body {
+  font-size: $font-size-medium;
+  font-weight: $font-weight-regular;
+  color: $color-text-primary;
+  line-height: 1.5;
+}
+
+@mixin typography-body-bold {
+  font-size: $font-size-medium;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.5;
+}
+
+@mixin typography-title {
+  font-size: $font-size-large;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.3;
+}
+
+@mixin typography-heading {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.3;
+}
+
+@mixin typography-heading-big {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.3;
+}
+
+// Component Mixins
+@mixin component-input {
+  font-size: 20px;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid $colorMedium;
+  border-radius: 6px;
+  background-color: $colorWhite;
+  box-shadow: $boxShadow;
+  transition: $transition border-color, $transition box-shadow, $transition transform;
+
+  // 플레이스홀더 스타일
+  &::placeholder {
+    @include typography-body;
+    color: $color-text-tertiary;
+    opacity: 0.7;
+  }
+
+  // 포커스 상태
+  &:focus {
+    outline: none;
+    border-color: $colorSymbolGreen;
+    box-shadow: 0 0 10px rgba($colorSymbolGreen, 0.3);
+    transform: translateY(-2px); // 약간의 떠오르는 효과
+  }
+
+  // 호버 상태
+  &:hover:not(:disabled) {
+    border-color: $colorSymbolGreen;
+    background-color: $colorBrighter;
+  }
+
+  // 비활성화 상태
+  &:disabled {
+    background-color: $colorMediumBright;
+    border-color: $colorMediumDarker;
+    color: $color-text-tertiary;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  // 에러 상태
+  &.error {
+    border-color: $color-text-error;
+    box-shadow: 0 0 8px rgba($color-text-error, 0.2);
+  }
+}
+
+// reset a css
+a {
+  text-decoration: none;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}

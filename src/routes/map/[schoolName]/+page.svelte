@@ -5,7 +5,7 @@
 	import type { ShapeData } from '$lib/models/shapes';
 
 	export let data: {
-		buildingName: string;
+		schoolName: string;
 		shapes: ShapeData[];
 	};
 
@@ -408,8 +408,8 @@
 			}
 			shapesToSave.push(shapeData);
 		});
-		await saveShapes(data.buildingName, shapesToSave);
-		alert(`${data.buildingName} 데이터가 저장되었습니다.`);
+		await saveShapes(data.schoolName, shapesToSave);
+		alert(`${data.schoolName} 데이터가 저장되었습니다.`);
 	}
 
 	$: {
@@ -553,62 +553,159 @@
 </script>
 
 <div class="toolbar_container">
-	<button on:click={addRect} disabled={!konvaLoaded}>사각형 추가</button>
-	<button on:click={addCircle} disabled={!konvaLoaded}>원 추가</button>
-	<button on:click={toggleDrawingLine} class:active={isDrawingLine} disabled={!konvaLoaded}>선 그리기</button>
-	<button on:click={saveCanvasState} disabled={!konvaLoaded}>저장하기</button>
-	<input type="color" bind:value={fillColor} title="채우기 색상" />
-	<button on:click={deleteShape} disabled={!selectedShape}>삭제</button>
-	
-	<input
-		type="file"
-		bind:this={fileInput}
-		on:change={extractShapesFromImage}
-		accept="image/*"
-		style="display: none;"
-	/>
-	<button on:click={() => fileInput.click()} disabled={isLoadingFromImage || !konvaLoaded}>
-		{isLoadingFromImage ? '처리 중...' : '사진으로 다이어그램 만들기'}
-	</button>
-	{#if errorFromImage}
-		<span class="error-text">{errorFromImage}</span>
-	{/if}
+  <button on:click={addRect} disabled={!konvaLoaded}>사각형 추가</button>
+  <button on:click={addCircle} disabled={!konvaLoaded}>원 추가</button>
+  <button on:click={toggleDrawingLine} class:active={isDrawingLine} disabled={!konvaLoaded}>선 그리기</button>
+  <button on:click={saveCanvasState} disabled={!konvaLoaded}>저장하기</button>
+  <input type="color" bind:value={fillColor} title="채우기 색상" />
+  <button on:click={deleteShape} disabled={!selectedShape}>삭제</button>
+  
+  <input
+    type="file"
+    bind:this={fileInput}
+    on:change={extractShapesFromImage}
+    accept="image/*"
+    style="display: none;"
+  />
+  <button on:click={() => fileInput.click()} disabled={isLoadingFromImage || !konvaLoaded}>
+    {isLoadingFromImage ? '처리 중...' : '사진으로 다이어그램 만들기'}
+  </button>
+  {#if errorFromImage}
+    <span class="error-text">{errorFromImage}</span>
+  {/if}
 </div>
 
 <div id="canvas-container" class="canvas_container" />
 
-<style>
-	:global(body) {
-		margin: 0;
-		overflow: hidden;
-	}
-	.toolbar_container {
-		position: absolute;
-		top: 10px;
-		left: 10px;
-		z-index: 10;
-		display: flex;
-		gap: 8px;
-		background-color: rgba(255, 255, 255, 0.8);
-		padding: 8px;
-		border-radius: 6px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		align-items: center;
-	}
-	.canvas_container {
-		width: 100vw;
-		height: 100vh;
-	}
-	button {
-		padding: 8px 12px;
-		font-size: 14px;
-		cursor: pointer;
-	}
-	button.active {
-		background-color: #a0c4ff; /* 활성화 시 색상 변경 */
-	}
-	.error-text {
-		color: crimson;
-		font-size: 14px;
-	}
+<style lang="scss">
+  @import '$lib/style/main.scss';
+
+  .toolbar_container {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap; // Allow wrapping on smaller screens
+    gap: 0.75rem;
+    background-color: $colorWhite;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: $boxShadow;
+    align-items: center;
+    border: 1px solid $colorMediumBright;
+    transition: $transition;
+
+    &:hover {
+      border-color: $colorSymbolGreen;
+    }
+  }
+
+  .canvas_container {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  button {
+    @include typography-body-bold;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 6px;
+    background: $colorBrighter;
+    color: $color-text-primary;
+    cursor: pointer;
+    transition: $transition background-color, $transition transform, $transition box-shadow;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &:hover:not(:disabled) {
+      background: $colorSymbolGreen;
+      color: $color-text-inverse;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba($colorSymbolGreen, 0.3);
+    }
+
+    &:disabled {
+      background: $colorMedium;
+      color: $color-text-tertiary;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    &.active {
+      background: $colorSymbolGreen;
+      color: $color-text-inverse;
+      box-shadow: 0 0 8px rgba($colorSymbolGreen, 0.4);
+    }
+  }
+
+  input[type="color"] {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid $colorMedium;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    transition: $transition border-color, $transition box-shadow;
+
+    &:hover {
+      border-color: $colorSymbolGreen;
+      box-shadow: 0 0 6px rgba($colorSymbolGreen, 0.2);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $colorSymbolGreen;
+      box-shadow: 0 0 8px rgba($colorSymbolGreen, 0.3);
+    }
+  }
+
+  .error-text {
+    @include typography-small;
+    color: $color-text-error;
+    margin-left: 0.5rem;
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    .toolbar_container {
+      top: 0.5rem;
+      right: 0.5rem;
+      padding: 0.75rem;
+      gap: 0.5rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: $font-size-small;
+    }
+
+    input[type="color"] {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .toolbar_container {
+      flex-direction: column; // Stack vertically on small screens
+      align-items: stretch;
+      max-width: 90%;
+    }
+
+    button {
+      width: 100%; // Full width buttons
+      text-align: center;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 36px;
+    }
+
+    .error-text {
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+  }
 </style>
