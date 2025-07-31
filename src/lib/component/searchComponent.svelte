@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
     import { slide } from 'svelte/transition';
-	let schoolName = '';
-	let schoolList: any[] = [];
-	let isLoading = false;
-	let error: string | null = null;
+	import { school, setSchoolName } from '$lib/store/schoolDataStore';
+
+	let selectedSchoolName = $derived($school.schoolName);
+
+	let schoolName = $state('');
+	let schoolList: any[] = $state([]);
+	let isLoading = $state(false);
+	let error: string | null = $state(null);
 
 	async function searchSchool() {
 		if (!schoolName.trim()) {
@@ -34,56 +38,75 @@
 	function goToSchoolPage(school: { name: string }) {
 		goto(`/map/${encodeURIComponent(school.name)}`);
 	}
+
+	function applySelectedSchoolName(school: { name: string }){
+		setSchoolName(school.name);
+	}
+
 </script>
 
-<div class="search-bubble">
-	<h1>학교 검색</h1>
-	
-	<div class="search-form">
-		<input
-			type="text"
-			bind:value={schoolName}
-			on:keydown={(e) => e.key === 'Enter' && searchSchool()}
-			placeholder="학교 이름을 입력하세요 (예: 서천고)"
-		/>
-		<button on:click={searchSchool} disabled={isLoading} class="sumbit-button">
-			{isLoading ? '검색 중...' : '학교 검색'}
-		</button>
+<div class="search-flexbox">
+	<div class="search-bubble">
+		<h1>학교 검색</h1>
+		{#if selectedSchoolName}
+			<h2>선택된 학교: {selectedSchoolName}</h2>
+		{/if}		
+		<div class="search-form">
+			<input
+				type="text"
+				bind:value={schoolName}
+				onkeydown={(e) => e.key === 'Enter' && searchSchool()}
+				placeholder="학교 이름을 입력하세요 (예: 서천고)"
+			/>
+			<button onclick={searchSchool} disabled={isLoading} class="sumbit-button">
+				{isLoading ? '검색 중...' : '학교 검색'}
+			</button>
+		</div>
+
+		{#if error}
+			<p class="error">{error}</p>
+		{/if}
+
+		{#if schoolList.length > 0}
+			<h1>검색 결과:</h1>
+			<ul transition:slide>
+				{#each schoolList as school}
+					<li>
+						<button onclick={() => applySelectedSchoolName(school)}>
+							{school.name} ({school.region})
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	</div>
-
-	{#if error}
-		<p class="error">{error}</p>
-	{/if}
-
-	{#if schoolList.length > 0}
-		<h1>검색 결과:</h1>
-		<ul transition:slide>
-			{#each schoolList as school}
-				<li>
-					<button on:click={() => goToSchoolPage(school)}>
-						{school.name} ({school.region})
-					</button>
-				</li>
-			{/each}
-		</ul>
-	{/if}
 </div>
 
 <style lang="scss">
 	@use '$lib/style/main.scss' as *;
 
+	.search-flexbox{
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	.search-bubble{
 		width: 100%;
 		max-width: 600px;
-		padding: 10px 20px;
+		padding: 45px;
 		border-radius: 10px;
-		box-shadow: $boxShadow;
 	}
 
 	h1 {
 		@include typography-heading;
 		color: $color-text-primary;
-		margin-bottom: 1.5rem;
+	}
+
+	h2{
+		@include typography-body;
+		color: $color-text-primary;
 	}
 
 	.search-form {

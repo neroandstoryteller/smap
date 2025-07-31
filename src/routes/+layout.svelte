@@ -2,8 +2,13 @@
     import { goto } from "$app/navigation";
     import { fade } from "svelte/transition";
     import { page } from "$app/state";
+    import { initSchool, school } from "$lib/store/schoolDataStore";
+    import { onMount } from "svelte";
+
     let { children } = $props();
     
+    let schoolName = $derived($school.schoolName)
+
     const path = $derived(page.url.pathname);
 
     let isSidebarOpen = $state(false);
@@ -19,6 +24,10 @@
         login: "/login",
         signup: "/signup",
     })
+
+    onMount(() => {
+        initSchool()
+    });
 </script>
 
 <div class="layout">
@@ -36,7 +45,7 @@
                         <span class="description" transition:fade>메인</span>
                     {/if}
                 </a>
-                <a class:activated={gotoLink.map === path} href="{gotoLink.map}" class="li">
+                <a class:activated={gotoLink.map === path} href="{gotoLink.map}/{schoolName}" class="li">
                     <span class="material-symbols-outlined">map</span>
                     {#if isSidebarOpen}
                         <span class="description" transition:fade>지도</span>
@@ -191,8 +200,8 @@
     }
 
     main {
-        padding: 32px;
         display: flex;
+        flex-flow: column;
         align-items: center;
         justify-content: center;
     }
