@@ -43,106 +43,50 @@ $color-text-error: #d32f2f;
 
 // Typography Mixins
 @mixin typography-tiny {
-  font-size: $font-size-tiny;
-  font-weight: $font-weight-regular;
-  color: $color-text-tertiary;
-  line-height: 1.4;
+	font-size: $font-size-tiny;
+	font-weight: $font-weight-regular;
+	color: $color-text-tertiary;
+	line-height: 1.4;
 }
 
 @mixin typography-small {
-  font-size: $font-size-small;
-  font-weight: $font-weight-regular;
-  color: $color-text-secondary;
-  line-height: 1.5;
+	font-size: $font-size-small;
+	font-weight: $font-weight-regular;
+	color: $color-text-secondary;
+	line-height: 1.5;
 }
 
 @mixin typography-body {
-  font-size: $font-size-medium;
-  font-weight: $font-weight-regular;
-  color: $color-text-primary;
-  line-height: 1.5;
+	font-size: $font-size-medium;
+	font-weight: $font-weight-regular;
+	color: $color-text-primary;
+	line-height: 1.5;
 }
 
 @mixin typography-body-bold {
-  font-size: $font-size-medium;
-  font-weight: $font-weight-bold;
-  color: $color-text-primary;
-  line-height: 1.5;
+	font-size: $font-size-medium;
+	font-weight: $font-weight-bold;
+	color: $color-text-primary;
+	line-height: 1.5;
 }
 
 @mixin typography-title {
-  font-size: $font-size-large;
-  font-weight: $font-weight-bold;
-  color: $color-text-primary;
-  line-height: 1.3;
+	font-size: $font-size-large;
+	font-weight: $font-weight-bold;
+	color: $color-text-primary;
+	line-height: 1.3;
 }
 
 @mixin typography-heading {
-  font-size: $font-size-xl;
-  font-weight: $font-weight-bold;
-  color: $color-text-primary;
-  line-height: 1.3;
+	font-size: $font-size-xl;
+	font-weight: $font-weight-bold;
+	color: $color-text-primary;
+	line-height: 1.3;
 }
 
 @mixin typography-heading-big {
-  font-size: $font-size-xxl;
-  font-weight: $font-weight-bold;
-  color: $color-text-primary;
-  line-height: 1.3;
-}
-
-// Component Mixins
-@mixin component-input {
-  font-size: 20px;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid $colorMedium;
-  border-radius: 6px;
-  background-color: $colorWhite;
-  box-shadow: $boxShadow;
-  transition: $transition border-color, $transition box-shadow, $transition transform;
-
-  // 플레이스홀더 스타일
-  &::placeholder {
-    @include typography-body;
-    color: $color-text-tertiary;
-    opacity: 0.7;
-  }
-
-  // 포커스 상태
-  &:focus {
-    outline: none;
-    border-color: $colorSymbolGreen;
-    box-shadow: 0 0 10px rgba($colorSymbolGreen, 0.3);
-    transform: translateY(-2px); // 약간의 떠오르는 효과
-  }
-
-  // 호버 상태
-  &:hover:not(:disabled) {
-    border-color: $colorSymbolGreen;
-    background-color: $colorBrighter;
-  }
-
-  // 비활성화 상태
-  &:disabled {
-    background-color: $colorMediumBright;
-    border-color: $colorMediumDarker;
-    color: $color-text-tertiary;
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-
-  // 에러 상태
-  &.error {
-    border-color: $color-text-error;
-    box-shadow: 0 0 8px rgba($color-text-error, 0.2);
-  }
-}
-
-// reset a css
-a {
-  text-decoration: none;
-  color: inherit;
-  margin: 0;
-  padding: 0;
+	font-size: $font-size-xxl;
+	font-weight: $font-weight-bold;
+	color: $color-text-primary;
+	line-height: 1.3;
 }

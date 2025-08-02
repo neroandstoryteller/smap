@@ -1,4 +1,4 @@
-import { loadShapes } from '$lib/firestore';
+import { loadShapes } from '$lib/database/firestore';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params, fetch }) => {

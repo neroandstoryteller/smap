@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type Konva from 'konva';
 	import { onMount, onDestroy } from 'svelte';
-	import { saveShapes } from '$lib/firestore';
+	import { saveShapes } from '$lib/database/firestore';
 	import type { ShapeData } from '$lib/models/shapes';
 
 	export let data: {

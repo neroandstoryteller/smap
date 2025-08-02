@@ -202,7 +202,13 @@
     main {
         display: flex;
         flex-flow: column;
-        align-items: center;
-        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+    a {
+        text-decoration: none;
+        color: inherit;
+        margin: 0;
+        padding: 0;
     }
 </style>

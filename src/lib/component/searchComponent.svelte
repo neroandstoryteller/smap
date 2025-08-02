@@ -116,7 +116,44 @@
 	}
 
 	input {
-		@include component-input;
+		font-size: 20px;
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border: 1px solid $colorMedium;
+		border-radius: 6px;
+		background-color: $colorWhite;
+		box-shadow: $boxShadow;
+		transition: $transition border-color, $transition box-shadow, $transition transform;
+
+		// 플레이스홀더 스타일
+		&::placeholder {
+			@include typography-body;
+			color: $color-text-tertiary;
+			opacity: 0.7;
+		}
+
+		// 포커스 상태
+		&:focus {
+			outline: none;
+			border-color: $colorSymbolGreen;
+			box-shadow: 0 0 10px rgba($colorSymbolGreen, 0.3);
+			transform: translateY(-2px); // 약간의 떠오르는 효과
+		}
+
+		// 호버 상태
+		&:hover:not(:disabled) {
+			border-color: $colorSymbolGreen;
+			background-color: $colorBrighter;
+		}
+
+		// 비활성화 상태
+		&:disabled {
+			background-color: $colorMediumBright;
+			border-color: $colorMediumDarker;
+			color: $color-text-tertiary;
+			cursor: not-allowed;
+			opacity: 0.6;
+		}
 	}
 
 	.sumbit-button {

@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
-import type { ShapeData } from './models/shapes';
+import type { ShapeData } from '../models/shapes';
 
 function getDb(): Firestore {
 	if (!getApps().length) {

@@ -1,85 +1,108 @@
-import { writable, derived } from 'svelte/store';
-import type { Konva } from 'konva/lib/Konva'; // Konva 타입 (npm i @types/konva)
+// $lib/store/canvasStore.ts
+import { writable } from 'svelte/store';
+import Konva from 'konva';
+import { Stage } from 'konva/lib/Stage';
+import type { Layer } from 'konva/lib/Layer';
+import type { ShapeData } from '$lib/models/shapes';
+import type { Shape } from 'konva/lib/Shape';
+import { Group } from 'konva/lib/Group';
 
-// Shape 타입 정의
-export type Shape = {
-  id: string;
-  type: 'rect' | 'circle' | 'text';
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
-  radius?: number; // circle용
-  fill: string;
-  draggable: boolean;
-  fontSize?: number;
-  text?: string;
-  handle?: Konva.Node; // Konva 노드 참조
-};
+// writable 스토어 초기화
+export const stage = writable<Stage | null>(null);
+export const layer = writable<Layer | null>(null);
+export const shapes = writable<Group[]>([]);
 
-type CanvasState = {
-  shapes: Shape[];
-  history: Shape[][]; // snapshots of shapes
-  historyIndex: number;
-  selectedId: string | null;
-};
+export const selectedShape = writable<Konva.Group | null>(null);
 
-const initialState: CanvasState = {
-  shapes: [],
-  history: [[]], // 초기 빈 상태
-  historyIndex: 0,
-  selectedId: null
-};
+export const konvaModule = writable<typeof Konva | null>(null);
+export const transformer = writable<Konva.Transformer | null>(null);
 
-const store = writable<CanvasState>(initialState);
+export const isReady = writable<boolean>(false);
+export const editable = writable<boolean>(true);
+export const isDrawingLine = writable<boolean>(false);
 
-export const canvasState = derived(store, $store => $store);
-
-export const selectedShape = derived(store, $store => 
-  $store.shapes.find(s => s.id === $store.selectedId) || null
-);
-
-let shapeId = 0;
-
-export function addShape(newShape: Omit<Shape, 'id' | 'handle'>) {
-  store.update(state => {
-    const id = `shape_${shapeId++}`;
-    const shapes = [...state.shapes, { ...newShape, id }];
-    const history = state.history.slice(0, state.historyIndex + 1);
-    history.push(shapes);
-    return { ...state, shapes, history, historyIndex: history.length - 1 };
-  });
+export function genId(): string {
+    return `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 }
 
-export function updateShape(id: string, updates: Partial<Shape>) {
-  store.update(state => {
-    const shapes = state.shapes.map(s => s.id === id ? { ...s, ...updates } : s);
-    const history = state.history.slice(0, state.historyIndex + 1);
-    history.push(shapes);
-    return { ...state, shapes, history, historyIndex: history.length - 1 };
-  });
+// 새 캔버스 생성
+async function createNewCanvas(container: HTMLDivElement) {
+    const newStage = new Konva.Stage({
+        container: container,
+        listening: true,
+        width: window.innerWidth - 70,
+        height: window.innerHeight,
+        draggable: true,
+    });
+    const module = await import('konva');
+
+    const newLayer = new Konva.Layer();
+    const newConvaModule = module.default;
+    const newTransformer = new newConvaModule.Transformer({
+        rotationSnaps: [0, 45, 90, 135, 180, 225, 270, 315],
+        borderStroke: 'royalblue',
+        borderDash: [3, 3]
+    });
+
+    newStage.add(newLayer);
+    newLayer.add(newTransformer);
+
+    stage.set(newStage);
+    layer.set(newLayer);
+    shapes.set([]);
+
+    konvaModule.set(newConvaModule);
+    transformer.set(newTransformer);
+
+    return newStage
 }
 
-export function selectShape(id: string) {
-  store.update(state => ({ ...state, selectedId: id }));
+export function refreshCanvas() {
+    layer.subscribe(currentLayer => {
+        if (currentLayer) {
+            // 레이어에서 모든 셰이프를 가져옴
+            const layerShapes = currentLayer
+                .getChildren((node) => node instanceof Konva.Group)
+                .filter((node): node is Konva.Group =>
+                    node instanceof Konva.Group && !(node instanceof Konva.Transformer)
+                );
+            shapes.set(layerShapes);
+            // 캔버스 다시 그리기
+            currentLayer.draw();
+        }
+    })();
 }
 
-export function undo() {
-  store.update(state => {
-    if (state.historyIndex > 0) {
-      const historyIndex = state.historyIndex - 1;
-      return { ...state, shapes: state.history[historyIndex], historyIndex };
-    }
-    return state;
-  });
+
+export async function initCanvas(container: HTMLDivElement) {
+    const newCanvas = await createNewCanvas(container)
+    return newCanvas
 }
 
-export function redo() {
-  store.update(state => {
-    if (state.historyIndex < state.history.length - 1) {
-      const historyIndex = state.historyIndex + 1;
-      return { ...state, shapes: state.history[historyIndex], historyIndex };
-    }
-    return state;
-  });
+export function removeCanvas() {
+    stage.update((existingStage) => {
+        if (existingStage) {
+            existingStage.destroy();
+        }
+        return null;
+    });
+
+    layer.update((existingLayer) => {
+        if (existingLayer) {
+            existingLayer.destroy();
+        }
+        return null;
+    });
+
+    transformer.update((existingTransformer) => {
+        if (existingTransformer) {
+            existingTransformer.destroy();
+        }
+        return null;
+    });
+
+    konvaModule.set(null);
+    editable.set(false);
+    isDrawingLine.set(false);
+    selectedShape.set(null);
 }
