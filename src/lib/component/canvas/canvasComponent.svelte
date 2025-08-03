@@ -1,4 +1,5 @@
 <script lang="ts">
+	export let shapeData;
 	import {
 		stage,
 		layer,
@@ -14,7 +15,10 @@
 
         initCanvas,
         removeCanvas,
-        refreshCanvas
+        refreshCanvas,
+
+        restoreCanvas
+
 	} from "$lib/store/canvasStore";
     import { onMount } from "svelte";
     import SnapUtil from "$lib/component/canvas/utils/snapUtil.svelte";
@@ -32,9 +36,11 @@
 
     onMount(() => {
         (async () => {
+			console.log(shapeData)
             await initCanvas(canvasContainer);
             if ($stage && $layer && $konvaModule && $transformer) {
                 $isReady = true;
+				restoreCanvas(shapeData);
 				saveHistory();
                 console.log("Ready");
             }

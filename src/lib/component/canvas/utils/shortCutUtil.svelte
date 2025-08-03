@@ -89,14 +89,16 @@
 	function undo() {
         if (!$isReady || $step <= 0) return;
 		$step--;
-		restoreCanvas();
+		const shapeData = $history[$step]
+		restoreCanvas(shapeData);
 	}
 
 	function redo() {
 		if (!$isReady || $step >= $history.length - 1) return;
 
 		$step++;
-		restoreCanvas();
+		const shapeData = $history[$step]
+		restoreCanvas(shapeData);
 	}
 
 	function copy() {

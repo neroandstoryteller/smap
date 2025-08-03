@@ -70,6 +70,8 @@ async function createNewCanvas(container: HTMLDivElement) {
 
     konvaModule.set(newConvaModule);
     transformer.set(newTransformer);
+
+    console.log("new canvas created!")
     return newStage
 }
 
@@ -129,25 +131,21 @@ export function removeCanvas() {
     selectedShape.set(null);
 }
 
-export function restoreCanvas() {
+export function restoreCanvas(shapeDataList:ShapeData[]) {
     const ready = get(isReady);
 
     if (!ready) return;
 
     const currentLayer = get(layer);
     const currentTransformer = get(transformer);
-    const currentKonvaModule = get(konvaModule);
-    const currentStep = get(step);
-    const currentHistory = get(history);
 
     // Transformer를 제외하고 모든 자식 노드 제거
     currentLayer!.getChildren(node => node !== currentTransformer).forEach(node => node.destroy());
 
     // 복원할 도형 데이터
-    const shapes = currentHistory[currentStep];
 
     // 도형 복원
-    shapes.forEach((shapeData: ShapeData) => {
+    shapeDataList.forEach((shapeData: ShapeData) => {
         addGroup(shapeData, shapeData.text || "");
     });    
 

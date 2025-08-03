@@ -232,16 +232,16 @@
 		{#if sideBarMode === mode.diagram}
 			<div class="diagram-mode" id="add-flex">
 				<button onclick={addRect} disabled={!$isReady} class="add-button">
-					<img src="diagram/newRect.png" alt="새 사각형">
+					<img src="/diagram/newRect.png" alt="새 사각형">
 				</button>
 				<button onclick={addCircle} disabled={!$isReady} class="add-button">
-					<img src="diagram/newCircle.png" alt="새 사각형">
+					<img src="/diagram/newCircle.png" alt="새 사각형">
 				</button>
 			</div>
 		{:else if sideBarMode === mode.text}
 			<div class="diagram-mode" id="add-flex">
 				<button onclick={addRect} disabled={!$isReady} class="add-button">
-					<img src="diagram/newRect.png" alt="새 사각형">
+					<img src="/diagram/newRect.png" alt="새 사각형">
 				</button>
 			</div>
 		{/if}
