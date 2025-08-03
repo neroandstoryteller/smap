@@ -10,6 +10,7 @@
 		editable,
 		isDrawingLine,
 		genId,
+		saveHistory,
 
         initCanvas,
         removeCanvas,
@@ -18,6 +19,7 @@
     import { onMount } from "svelte";
     import SnapUtil from "$lib/component/canvas/utils/snapUtil.svelte";
     import SideBarUtil from "$lib/component/canvas/utils/sideBarUtil.svelte";
+    import ShortCutUtil from "./utils/shortCutUtil.svelte";
 
     let canvasContainer: HTMLDivElement;
 
@@ -33,6 +35,7 @@
             await initCanvas(canvasContainer);
             if ($stage && $layer && $konvaModule && $transformer) {
                 $isReady = true;
+				saveHistory();
                 console.log("Ready");
             }
 
@@ -78,8 +81,10 @@
 </script>
 
 <div class="canvas-container" bind:this={canvasContainer}></div>
+
 <SideBarUtil />
 <SnapUtil />
+<ShortCutUtil />
 
 <style>
     .canvas-container {

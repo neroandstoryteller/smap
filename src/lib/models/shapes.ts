@@ -3,6 +3,7 @@ export interface ShapeData {
 	type: 'Rect' | 'Circle' | 'Line';
 	x: number;
 	y: number;
+	rotation: number;
 	width?: number;
 	height?: number;
 	radius?: number;

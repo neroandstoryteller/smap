@@ -18,22 +18,38 @@
     import { Group } from "konva/lib/Group";
 
     // 스냅 감지 거리 (픽셀 단위)
-    const snapTolerance = 10;
+    const snapTolerance = 5;
     // 한 줄 정렬 감지 거리 (y 또는 x 차이)
-    const lineTolerance = 100;
+    const lineTolerance = 20;
 
     function getGroupSize(group: Konva.Group) {
-        // Group 내 Shape 노드(사각형)만 선택 (Text 제외)
-        const rect = group.getChildren(
-            (node) => node instanceof Konva.Rect,
-        )[0]; // Konva.Rect로 명시
+        // Group 내 Shape 노드(사각형 또는 원) 선택
+        const shape = group.getChildren(
+            (node) => node instanceof Konva.Rect || node instanceof Konva.Circle
+        )[0]; // Konva.Rect 또는 Konva.Circle
 
-        const width = rect.width() * rect.scaleX() / 2
-        const height = rect.height() * rect.scaleY() / 2
+        if (shape instanceof Konva.Rect) {
+            // 사각형인 경우
+            const width = shape.width() * shape.scaleX() / 2;
+            const height = shape.height() * shape.scaleY() / 2;
 
+            return {
+                width: width,
+                height: height,
+            };
+        } else if (shape instanceof Konva.Circle) {
+            // 원인 경우
+            const radius = shape.radius() * shape.scaleX(); // scaleX와 scaleY는 동일하다고 가정
+            return {
+                width: radius,
+                height: radius,
+            };
+        }
+
+        // Shape가 없거나 예상치 못한 경우 기본값 반환
         return {
-            width: width, // /2 유지
-            height: height, // /2 유지
+            width: 0,
+            height: 0,
         };
     }
 
@@ -195,7 +211,7 @@
 
                     if (leftShape){
                         const { width: leftShapeWidth, height: leftShapeHeight } = getGroupSize(leftShape);
-                        if( Math.abs( gap - calcGapWithPos( pos.x, currentWidth, leftShape.x(), leftShapeWidth )) < lineTolerance / 10){
+                        if( Math.abs( gap - calcGapWithPos( pos.x, currentWidth, leftShape.x(), leftShapeWidth )) < lineTolerance / 7){
                             newX =
                                 leftShape.x() +
                                 leftShapeWidth +
@@ -207,7 +223,7 @@
                     } 
                     if (rightShape){
                         const { width: rightShapeWidth, height: rightShapeHeight } = getGroupSize(rightShape);
-                        if( Math.abs( gap - calcGapWithPos( pos.x, currentWidth, rightShape.x(), rightShapeWidth )) < lineTolerance / 10){
+                        if( Math.abs( gap - calcGapWithPos( pos.x, currentWidth, rightShape.x(), rightShapeWidth )) < lineTolerance / 7){
                             newX =
                                 rightShape.x() -
                                 rightShapeWidth -
@@ -235,7 +251,7 @@
 
                     if (bottomShape){
                         const { width: bottomShapeWidth, height: bottomShapeHeight } = getGroupSize(bottomShape);
-                        if( Math.abs( gap - calcGapWithPos( pos.y, currentHeight, bottomShape.y(), bottomShapeHeight )) < lineTolerance / 10){
+                        if( Math.abs( gap - calcGapWithPos( pos.y, currentHeight, bottomShape.y(), bottomShapeHeight )) < lineTolerance / 7){
                             newY=
                                 bottomShape.y() +
                                 bottomShapeHeight +
@@ -247,7 +263,7 @@
                     }
                     if (topShape){
                         const { width: topShapeWidth, height: topShapeHeight } = getGroupSize(topShape);
-                        if( Math.abs( gap - calcGapWithPos( pos.y, currentHeight, topShape.y(), topShapeHeight )) < lineTolerance / 10){
+                        if( Math.abs( gap - calcGapWithPos( pos.y, currentHeight, topShape.y(), topShapeHeight )) < lineTolerance / 7){
                             newY =
                                 topShape.y() -
                                 topShapeHeight -
@@ -293,7 +309,6 @@
             shape.off("dragmove"); // 기존 dragmove 이벤트 제거
             shape.on("dragmove", () => {
                 snapPosition({ x: shape.x(), y: shape.y() },width, height, shape);
-                refreshCanvas();
             });
         });
 
@@ -313,7 +328,6 @@
                     const activeShape = $transformer!.nodes()[0];
                     if (activeShape && activeShape instanceof Group) {
                         snapRotation(activeShape);
-                        refreshCanvas();
                     }
                 });
             }

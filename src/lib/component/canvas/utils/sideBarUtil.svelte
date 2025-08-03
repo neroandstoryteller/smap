@@ -10,8 +10,11 @@
 		editable,
 		isDrawingLine,
 		genId,
+		fillColor,
+		addGroup,
 
-		refreshCanvas
+		refreshCanvas,
+		saveHistory,
 	} from "$lib/store/canvasStore";
 	import { saveShapes } from "$lib/database/firestore";
 	import Konva from "konva";
@@ -20,82 +23,23 @@
 
 	let schoolName = $derived($school.schoolName);
 
-	let fillColor = $state("#FF6347");
 	let isLoadingFromImage = $state(false);
 	let errorFromImage: string | null = $state(null);
 	let fileInput: HTMLInputElement;
 
 	let lineAnchors: Konva.Circle[] = [];
 
-	function addGroup(shapeConfig: any, text: string) {
-		if (!$isReady) return;
+	const mode = {
+		diagram: "diagram",
+		text: "text",
+		ai: "ai"
+	};
 
-		const group = new $konvaModule!.Group({
-			id: shapeConfig.id || genId(),
-			x: shapeConfig.x,
-			y: shapeConfig.y,
-			draggable: true,
-		});
+	let sideBarMode: string = $state(mode.diagram);
 
-		const shapeType = shapeConfig.type as "Rect" | "Circle" | "Line";
-		let shape: Konva.Shape;
-
-		const newShapeConfig = { ...shapeConfig };
-		delete newShapeConfig.type;
-		delete newShapeConfig.x;
-		delete newShapeConfig.y;
-		delete newShapeConfig.text;
-		delete newShapeConfig.draggable;
-		delete newShapeConfig.id;
-
-		if (shapeType === "Circle") {
-			const radius = shapeConfig.radius || 50;
-			shape = new $konvaModule!.Circle({
-				...newShapeConfig,
-				radius: radius,
-				x: radius,
-				y: radius,
-			});
-		} else if (shapeType === "Line") {
-			shape = new $konvaModule!.Line({
-				...newShapeConfig,
-				points: shapeConfig.points,
-				stroke: newShapeConfig.stroke || "#000000",
-				strokeWidth: newShapeConfig.strokeWidth || 5,
-			});
-		} else {
-			// 기본값을 Rect로 처리
-			shape = new $konvaModule!.Rect({
-				...newShapeConfig,
-				width: shapeConfig.width || 100,
-				height: shapeConfig.height || 80,
-				x: 0,
-				y: 0,
-			});
-		}
-		shape.name("main-shape");
-
-		const textNode = new $konvaModule!.Text({
-			text: text,
-			fontSize: 16,
-			fontFamily: "Calibri",
-			fill: "#000",
-			width: shape.width(),
-			height: shape.height(),
-			align: "center",
-			verticalAlign: "middle",
-			padding: 5,
-		});
-		textNode.name("text-node");
-
-		group.add(shape);
-		group.add(textNode);
-		$layer!.add(group);
-		bindShapeEvents(group);
-		refreshCanvas();
-		return group;
+	function setSideBarMode(mode:string){
+		sideBarMode = mode;
 	}
-
 	function addRect() {
 		const pointer = $stage!.getPointerPosition() || { x: 50, y: 50 };
 		const shapeConfig = {
@@ -104,11 +48,12 @@
 			y: pointer.y,
 			width: 100,
 			height: 80,
-			fill: fillColor,
+			fill: $fillColor,
 			stroke: "#000000",
 			strokeWidth: 2,
 		};
 		addGroup(shapeConfig, "새 사각형");
+		saveHistory();
 	}
 
 	function addCircle() {
@@ -118,11 +63,12 @@
 			x: pointer.x,
 			y: pointer.y,
 			radius: 50,
-			fill: fillColor,
+			fill: $fillColor,
 			stroke: "#000000",
 			strokeWidth: 2,
 		};
 		addGroup(shapeConfig, "새 원");
+		saveHistory();
 	}
 
 	function toggleDrawingLine() {
@@ -168,6 +114,7 @@
 			});
 
 			refreshCanvas();
+			saveHistory();
 		} catch (e: any) {
 			errorFromImage = e.message;
 		} finally {
@@ -175,119 +122,6 @@
 			// 동일한 파일을 다시 선택할 수 있도록 입력 값 초기화
 			input.value = "";
 		}
-	}
-
-	function bindShapeEvents(group: Konva.Group) {
-		group.on("mousedown touchstart", () => selectShape(group));
-		group.on("dragend", () => $layer!.draw());
-
-		group.on("transformend", () => {
-			const shape = group.findOne(".main-shape") as Konva.Shape;
-			const text = group.findOne(".text-node") as Konva.Text;
-			if (!shape) return;
-
-			const scaleX = group.scaleX();
-			const scaleY = group.scaleY();
-			group.scaleX(1);
-			group.scaleY(1);
-
-			if (shape instanceof $konvaModule!.Circle) {
-				const newRadius = shape.radius() * Math.max(scaleX, scaleY);
-				shape.radius(newRadius);
-				shape.x(newRadius);
-				shape.y(newRadius);
-				if (text) {
-					text.width(shape.width());
-					text.height(shape.height());
-				}
-			} else if (shape instanceof $konvaModule!.Rect) {
-				const newWidth = shape.width() * scaleX;
-				const newHeight = shape.height() * scaleY;
-				shape.width(newWidth);
-				shape.height(newHeight);
-				if (text) {
-					text.width(newWidth);
-					text.height(newHeight);
-				}
-			}
-			// Line transform logic is removed as per user request
-			refreshCanvas();
-		});
-
-		group.on("dblclick dbltap", () => editText(group));
-	}
-
-	function editText(group: Konva.Group) {
-		const textNode = group.findOne(".text-node") as Konva.Text;
-		const shape = group.findOne(".main-shape") as Konva.Shape;
-		if (!textNode || !shape) return;
-
-		textNode.hide();
-		refreshCanvas();
-
-		const textPosition = group.absolutePosition();
-		const stageBox = $stage!.container().getBoundingClientRect();
-		const areaPosition = {
-			x: stageBox.left + textPosition.x,
-			y: stageBox.top + textPosition.y,
-		};
-
-		const textarea = document.createElement("textarea");
-		document.body.appendChild(textarea);
-		Object.assign(textarea.style, {
-			position: "absolute",
-			top: `${areaPosition.y}px`,
-			left: `${areaPosition.x}px`,
-			width: `${shape.width() * group.scaleX()}px`,
-			height: `${shape.height() * group.scaleY()}px`,
-			fontSize: `${textNode.fontSize()}px`,
-			border: "none",
-			padding: "5px",
-			margin: "0px",
-			overflow: "hidden",
-			background: "none",
-			outline: "none",
-			resize: "none",
-			lineHeight: textNode.lineHeight().toString(),
-			fontFamily: textNode.fontFamily(),
-			transformOrigin: "left top",
-			textAlign: "center",
-			color:
-				typeof textNode.fill() === "string" ? textNode.fill() : "#000",
-		});
-		textarea.value = textNode.text();
-		textarea.focus();
-
-		function removeTextarea() {
-			if (document.body.contains(textarea))
-				document.body.removeChild(textarea);
-			window.removeEventListener("click", handleOutsideClick);
-		}
-
-		function saveText() {
-			textNode.text(textarea.value);
-			textNode.show();
-			refreshCanvas();
-			removeTextarea();
-		}
-
-		function handleOutsideClick(e: MouseEvent) {
-			if (e.target !== textarea) saveText();
-		}
-
-		textarea.addEventListener("keydown", (e) => {
-			if (e.key === "Enter" && !e.shiftKey) saveText();
-			else if (e.key === "Escape") {
-				textNode.show();
-				refreshCanvas();
-				removeTextarea();
-			}
-		});
-		textarea.addEventListener("blur", saveText);
-		setTimeout(
-			() => window.addEventListener("click", handleOutsideClick),
-			0,
-		);
 	}
 
 	function hideLineAnchors() {
@@ -355,27 +189,6 @@
 		});
 	}
 
-	function selectShape(group: Konva.Group) {
-		hideLineAnchors();
-		$transformer!.nodes([]);
-
-		$selectedShape = group;
-		const shape = group.findOne(".main-shape") as Konva.Shape;
-		if (!shape) return;
-
-		const shapeFill = shape.fill();
-		if (typeof shapeFill === "string") {
-			fillColor = shapeFill;
-		}
-
-		if (shape instanceof $konvaModule!.Line) {
-			showLineAnchors(group);
-		} else {
-			$transformer!.nodes([group]);
-		}
-		refreshCanvas();
-	}
-
 	function deleteShape() {
 		if ($selectedShape) {
 			$transformer!.nodes([]);
@@ -383,56 +196,59 @@
 			$selectedShape.destroy();
 			$selectedShape = null;
 			refreshCanvas();
+			saveHistory();
 		}
 	}
 
-	async function saveCanvasState() {
-		const shapesToSave: ShapeData[] = [];
-		const groups = $layer!.find("Group");
-
-		groups.forEach((groupNode) => {
-			const group = groupNode as Konva.Group;
-			const shape = group.findOne(".main-shape") as Konva.Shape;
-			const text = group.findOne(".text-node") as Konva.Text;
-			if (!shape) return;
-
-			const shapeData: ShapeData = {
-				id: group.id(),
-				type: shape.getClassName() as "Rect" | "Circle" | "Line",
-				x: group.x() || 0,
-				y: group.y() || 0,
-				fill: (shape.fill() as string) || "#FFFFFF",
-				stroke: (shape.stroke() as string) || "#000000",
-				strokeWidth: shape.strokeWidth() || 1,
-				text: text ? text.text() : "",
-			};
-
-			if (shape instanceof $konvaModule!.Rect) {
-				shapeData.width = shape.width() || 0;
-				shapeData.height = shape.height() || 0;
-			} else if (shape instanceof $konvaModule!.Circle) {
-				shapeData.radius = shape.radius() || 0;
-			} else if (shape instanceof $konvaModule!.Line) {
-				shapeData.points = shape.points();
-			}
-			shapesToSave.push(shapeData);
-		});
-		await saveShapes(schoolName, shapesToSave);
-		alert(`${schoolName} 데이터가 저장되었습니다.`);
-	}
 
 	$effect(() => {
 		if ($selectedShape) {
 			const shape = $selectedShape.findOne("Shape") as Konva.Shape;
-			if (shape && shape.fill() !== fillColor) {
-				shape.fill(fillColor);
+			if (shape && shape.fill() !== $fillColor) {
+				shape.fill($fillColor);
 				$layer?.draw();
 			}
 		}
 	});
 </script>
 
-<div class="toolbar_container">
+<div class="side-bar">
+	<div class="head">
+		<button class="mode-button" onclick={() => {setSideBarMode(mode.diagram)}} disabled={!$isReady} class:activated={sideBarMode === mode.diagram}>
+			<span class="material-symbols-outlined">shapes</span>
+		</button>
+		<button class="mode-button" onclick={() => {setSideBarMode(mode.text)}} disabled={!$isReady} class:activated={sideBarMode === mode.text}>
+			<span class="material-symbols-outlined">text_fields</span>
+		</button>
+		<button class="mode-button" onclick={() => {setSideBarMode(mode.ai)}} disabled={!$isReady} class:activated={sideBarMode === mode.ai}>
+			<span class="material-symbols-outlined">robot_2</span>
+		</button>
+		<button class="head-button" disabled={!$isReady}>
+			<span class="material-symbols-outlined">save</span>
+		</button>
+	</div>
+
+	<div class="body">
+		{#if sideBarMode === mode.diagram}
+			<div class="diagram-mode" id="add-flex">
+				<button onclick={addRect} disabled={!$isReady} class="add-button">
+					<img src="diagram/newRect.png" alt="새 사각형">
+				</button>
+				<button onclick={addCircle} disabled={!$isReady} class="add-button">
+					<img src="diagram/newCircle.png" alt="새 사각형">
+				</button>
+			</div>
+		{:else if sideBarMode === mode.text}
+			<div class="diagram-mode" id="add-flex">
+				<button onclick={addRect} disabled={!$isReady} class="add-button">
+					<img src="diagram/newRect.png" alt="새 사각형">
+				</button>
+			</div>
+		{/if}
+	</div>
+</div>
+
+<!-- <div class="toolbar_container">
 	<button onclick={addRect} disabled={!$isReady}>사각형 추가</button>
 	<button onclick={addCircle} disabled={!$isReady}>원 추가</button>
 	<button
@@ -441,7 +257,7 @@
 		disabled={!$isReady}>선 그리기</button
 	>
 	<button onclick={saveCanvasState} disabled={!$isReady}>저장하기</button>
-	<input type="color" bind:value={fillColor} title="채우기 색상" />
+	<input type="color" bind:value={$fillColor} title="채우기 색상" />
 	<button onclick={deleteShape} disabled={!$selectedShape}>삭제</button>
 
 	<input
@@ -460,64 +276,107 @@
 	{#if errorFromImage}
 		<span class="error-text">{errorFromImage}</span>
 	{/if}
-</div>
+</div> -->
 
 <style lang="scss">
 	@use "$lib/style/main.scss" as *;
 
-	.toolbar_container {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		z-index: 10;
-		display: flex;
-		flex-wrap: wrap; // Allow wrapping on smaller screens
-		gap: 0.75rem;
-		background-color: $colorWhite;
-		padding: 1rem;
-		border-radius: 8px;
-		box-shadow: $boxShadow;
-		align-items: center;
-		border: 1px solid $colorMediumBright;
+	.side-bar{
 		transition: $transition;
+		right: 0;
+		display: flex;
+		height: 100%;
+		padding-top: 10px;
+		padding-left: 10px;
+		position: fixed;
+		box-shadow: $boxShadow;
+		flex-flow: column;
+		background-color: $colorBright;
 
-		&:hover {
-			border-color: $colorSymbolGreen;
+		button{
+			@include typography-body-bold;
+			margin: 0;
+			padding: 5px;
+			border: none;
+			
+			background: $colorWhite;
+			color: $color-text-primary;
+			border-radius: 10px;
+
+			cursor: pointer;
+			transition:
+				$transition background-color,
+				$transition transform,
+				$transition box-shadow;
+
+			&:disabled {
+				background: $colorMedium;
+				color: $color-text-tertiary;
+				cursor: not-allowed;
+				opacity: 0.6;
+			}
 		}
-	}
 
-	button {
-		@include typography-body-bold;
-		padding: 0.75rem 1.25rem;
-		border: none;
-		border-radius: 6px;
-		background: $colorBrighter;
-		color: $color-text-primary;
-		cursor: pointer;
-		transition:
-			$transition background-color,
-			$transition transform,
-			$transition box-shadow;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		.head{
+			.mode-button {
+				width: 70px;
+				border-radius: 10px 10px 0px 0px;
 
-		&:hover:not(:disabled) {
-			background: $colorSymbolGreen;
-			color: $color-text-inverse;
-			transform: translateY(-2px);
-			box-shadow: 0 4px 12px rgba($colorSymbolGreen, 0.3);
+				&:hover:not(:disabled) {
+					background: $colorSymbolGreen;
+					color: $color-text-inverse;
+					box-shadow: 0 0 8px rgba($colorSymbolGreen, 0.4);
+				}
+
+				&.activated {
+					background: $colorSymbolGreen;
+					color: $color-text-inverse;
+					box-shadow: 0 0 8px rgba($colorSymbolGreen, 0.4);
+				}
+			}
+			.head-button{
+				&:hover:not(:disabled) {
+					background: $colorSymbolGreen;
+					color: $color-text-inverse;
+					box-shadow: 0 0 8px rgba($colorSymbolGreen, 0.4);
+				}
+
+				border-radius: 10px 10px 0px 0px;
+			}
 		}
 
-		&:disabled {
-			background: $colorMedium;
-			color: $color-text-tertiary;
-			cursor: not-allowed;
-			opacity: 0.6;
-		}
+		.body{
+			background-color: $colorWhite;
+			display: flex;
+			height: 100%;
 
-		&.active {
-			background: $colorSymbolGreen;
-			color: $color-text-inverse;
-			box-shadow: 0 0 8px rgba($colorSymbolGreen, 0.4);
+			#add-flex{
+				display: flex;
+				flex-flow: row;
+				padding: 10px;
+			}
+
+			.add-button {
+				transition: $transition;
+				margin: 5px;
+				width: 100px;
+				height: 100px;
+				background-color: $colorBrighter;
+				border: solid 1px transparent;
+				display: flex; /* Flexbox 활성화 */
+				justify-content: center; /* 수평 중앙 정렬 */
+				align-items: center; /* 수직 중앙 정렬 */
+				
+				&:hover:not(:disabled) {
+					border: $colorSymbolGreen solid 1px;
+					box-shadow: 0px 0px 10px rgba($colorSymbolGreen, 0.5);
+				}
+
+				img {
+					width: 100%; /* 이미지 너비 유지 */
+					height: auto; /* 이미지 비율 유지 */
+				}
+			}
 		}
 	}
 
@@ -549,48 +408,5 @@
 		@include typography-small;
 		color: $color-text-error;
 		margin-left: 0.5rem;
-	}
-
-	// Responsive design
-	@media (max-width: 768px) {
-		.toolbar_container {
-			top: 0.5rem;
-			right: 0.5rem;
-			padding: 0.75rem;
-			gap: 0.5rem;
-		}
-
-		button {
-			padding: 0.5rem 1rem;
-			font-size: $font-size-small;
-		}
-
-		input[type="color"] {
-			width: 32px;
-			height: 32px;
-		}
-	}
-
-	@media (max-width: 480px) {
-		.toolbar_container {
-			flex-direction: column; // Stack vertically on small screens
-			align-items: stretch;
-			max-width: 90%;
-		}
-
-		button {
-			width: 100%; // Full width buttons
-			text-align: center;
-		}
-
-		input[type="color"] {
-			width: 100%;
-			height: 36px;
-		}
-
-		.error-text {
-			margin-top: 0.5rem;
-			text-align: center;
-		}
 	}
 </style>
