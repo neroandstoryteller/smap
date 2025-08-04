@@ -13,8 +13,8 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^6.0.0",
-		"@sveltejs/kit": "^2.26.1",
-		"@sveltejs/vite-plugin-svelte": "^6.0.0",
+		"@sveltejs/kit": "^2.27.0",
+		"@sveltejs/vite-plugin-svelte": "^6.1.0",
 		"sass": "^1.89.2",
 		"sass-embedded": "^1.89.2",
 		"svelte": "^5.0.0",
@@ -24,12 +24,17 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"@genkit-ai/ai": "^1.15.5",
+		"@genkit-ai/core": "^1.15.5",
+		"@genkit-ai/googleai": "^1.15.5",
 		"@google/generative-ai": "^0.24.1",
 		"@types/three": "^0.178.1",
 		"canvas": "^3.1.2",
 		"comcigan-parser": "^1.0.0",
 		"firebase": "^12.0.0",
+		"genkit": "^1.15.5",
 		"konva": "^9.3.22",
-		"three": "^0.178.0"
+		"three": "^0.178.0",
+		"zod": "^3.25.76"
 	}
 }

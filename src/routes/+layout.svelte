@@ -7,11 +7,11 @@
 	import { signInWithGoogle, signOut } from "$lib/database/firestore";
 	import { user } from "$lib/store/user";
 
-    import Chat from "./Chat.svelte";
+    import Chat from "./chat.svelte";
 
     let { children } = $props();
     
-    let schoolName = $derived($school.schoolName)
+    let buildingName = $derived($school.buildingName)
 
     const path = $derived(page.url.pathname);
 
@@ -26,9 +26,9 @@
         isProfileMenuOpen = !isProfileMenuOpen;
     }
 
-    const gotoLink = $state({
+    const gotoLink = $derived({
         main: "/",
-        map: "/map",
+        map: `/${buildingName}/map`,
         search: "/search",
         login: "/login",
         signup: "/signup",
