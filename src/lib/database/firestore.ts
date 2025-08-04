@@ -1,4 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import {
 	getFirestore,
 	doc,
@@ -26,7 +27,7 @@ import {
 import { firebaseConfig } from './firebaseConfig';
 import type { ShapeData } from '../models/shapes';
 import { error } from '@sveltejs/kit';
-import { getStorage } from 'firebase/storage';
+import { writable } from "svelte/store";
 
 // --- Initialization (Single Point of Truth) ---
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
@@ -61,8 +62,8 @@ export async function saveShapes(mapName: string, shapes: ShapeData[]): Promise<
 }
 
 export async function loadShapes(
-	mapName: string,
-	fetcher: typeof fetch
+    mapName: string,
+    fetcher: typeof fetch
 ): Promise<ShapeData[]> {
 	const docRef = doc(db, 'mapName', mapName);
 	const docSnap = await getDoc(docRef);
@@ -236,4 +237,29 @@ export async function getPost(post_uid: string): Promise<Post | null> {
 	} else {
 		return null;
 	}
+}
+
+export async function uploadImage(file: File) {
+    if (!file) throw new Error('파일 없음');
+    
+    try {
+        const fileName = `img_${Date.now()}.png`;
+        const storageRef = ref(storage, `images/${fileName}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        return await getDownloadURL(snapshot.ref);
+    } catch (error: any) {
+        console.error('업로드 에러:', error.code, error.message);
+        throw error;
+    }
+}
+
+export async function deleteImage(imageUrl: string) {
+    try {
+        const storageRef = ref(storage, imageUrl);
+        await deleteObject(storageRef);
+        console.log(`Image deleted: ${imageUrl}`);
+    } catch (error: any) {
+        console.error('삭제 에러:', error.code, error.message);
+        throw error;
+    }
 }
