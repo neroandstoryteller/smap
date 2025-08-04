@@ -9,6 +9,7 @@ interface School {
 
 // 초기값 설정
 export const school = writable<School>({ schoolName: "" });
+export const mapName = writable<string | null>(null);
 
 export function setSchoolName(schoolName: string) {
     school.set({ schoolName });

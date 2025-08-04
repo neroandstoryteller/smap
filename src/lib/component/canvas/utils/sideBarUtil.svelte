@@ -12,20 +12,21 @@
 		genId,
 		fillColor,
 		addGroup,
-
+		save,
 		refreshCanvas,
 		saveHistory,
+        getShapeData,
 	} from "$lib/store/canvasStore";
 	import { saveShapes } from "$lib/database/firestore";
 	import Konva from "konva";
 	import type { ShapeData } from "$lib/models/shapes";
-	import { school } from "$lib/store/schoolDataStore";
+	import { mapName, school } from "$lib/store/schoolDataStore";
 
 	let schoolName = $derived($school.schoolName);
 
 	let isLoadingFromImage = $state(false);
 	let errorFromImage: string | null = $state(null);
-	let fileInput: HTMLInputElement;
+	let fileInput: HTMLInputElement | null = $state(null);
 
 	let lineAnchors: Konva.Circle[] = [];
 
@@ -200,16 +201,42 @@
 		}
 	}
 
+	// New state for shape properties
+	let shapeWidth = $state(0);
+	let shapeHeight = $state(0);
+	let shapeRotation = $state(0);
 
+	// Update shape properties when selection changes
 	$effect(() => {
 		if ($selectedShape) {
 			const shape = $selectedShape.findOne("Shape") as Konva.Shape;
-			if (shape && shape.fill() !== $fillColor) {
+			if (shape) {
 				shape.fill($fillColor);
+				shapeWidth = shape.width();
+				shapeHeight = shape.height();
+				shapeRotation = shape.rotation();
 				$layer?.draw();
 			}
+		} else {
+			shapeWidth = 0;
+			shapeHeight = 0;
+			shapeRotation = 0;
 		}
 	});
+
+	// Update shape dimensions and rotation
+	function updateShapeProperties() {
+		if ($selectedShape) {
+			const shape = $selectedShape.findOne("Shape") as Konva.Shape;
+			if (shape) {
+				shape.width(shapeWidth);
+				shape.height(shapeHeight);
+				shape.rotation(shapeRotation);
+				$layer?.draw();
+				saveHistory();
+			}
+		}
+	}
 </script>
 
 <div class="side-bar">
@@ -223,7 +250,7 @@
 		<button class="mode-button" onclick={() => {setSideBarMode(mode.ai)}} disabled={!$isReady} class:activated={sideBarMode === mode.ai}>
 			<span class="material-symbols-outlined">robot_2</span>
 		</button>
-		<button class="head-button" disabled={!$isReady}>
+		<button class="head-button" onclick={() => save()} disabled={!$isReady}>
 			<span class="material-symbols-outlined">save</span>
 		</button>
 	</div>
@@ -235,48 +262,72 @@
 					<img src="/diagram/newRect.png" alt="새 사각형">
 				</button>
 				<button onclick={addCircle} disabled={!$isReady} class="add-button">
-					<img src="/diagram/newCircle.png" alt="새 사각형">
+					<img src="/diagram/newCircle.png" alt="새 원">
 				</button>
 			</div>
 		{:else if sideBarMode === mode.text}
-			<div class="diagram-mode" id="add-flex">
-				<button onclick={addRect} disabled={!$isReady} class="add-button">
-					<img src="/diagram/newRect.png" alt="새 사각형">
+			<div></div>
+		{:else if sideBarMode === mode.ai}
+			<div class="ai-mode" id="add-flex">
+				<input
+					type="file"
+					bind:this={fileInput}
+					onchange={extractShapesFromImage}
+					accept="image/*"
+					style="display: none;"
+				/>
+				<button
+					class="normal-button"
+					onclick={() => fileInput!.click()}
+					disabled={isLoadingFromImage || !$isReady}
+				>
+					{isLoadingFromImage ? "처리 중..." : "사진으로 다이어그램 만들기"}
 				</button>
+				{#if errorFromImage}
+					<span class="error-text">{errorFromImage}</span>
+				{/if}
 			</div>
 		{/if}
+
+		<div class="shape-info">
+			<div class="shape-property">
+				<div>색상:    </div>
+				<input type="color" bind:value={$fillColor} title="채우기 색상" disabled={!$selectedShape} />
+			</div>
+			<div class="shape-property">
+				<div>가로:    </div>
+				<input 
+					type="number" 
+					bind:value={shapeWidth} 
+					oninput={updateShapeProperties}
+					min="10" 
+					disabled={!$selectedShape}
+				/>
+			</div>
+			<div class="shape-property">
+				<div>세로:    </div>
+				<input 
+					type="number" 
+					bind:value={shapeHeight} 
+					oninput={updateShapeProperties}
+					min="10" 
+					disabled={!$selectedShape}
+				/>
+			</div>
+			<div class="shape-property">
+				<div>회전:    </div>
+				<input 
+					type="number" 
+					bind:value={shapeRotation} 
+					oninput={updateShapeProperties}
+					min="0" 
+					max="360"
+					disabled={!$selectedShape}
+				/>
+			</div>
+		</div>
 	</div>
 </div>
-
-<!-- <div class="toolbar_container">
-	<button onclick={addRect} disabled={!$isReady}>사각형 추가</button>
-	<button onclick={addCircle} disabled={!$isReady}>원 추가</button>
-	<button
-		onclick={toggleDrawingLine}
-		class:active={$isDrawingLine}
-		disabled={!$isReady}>선 그리기</button
-	>
-	<button onclick={saveCanvasState} disabled={!$isReady}>저장하기</button>
-	<input type="color" bind:value={$fillColor} title="채우기 색상" />
-	<button onclick={deleteShape} disabled={!$selectedShape}>삭제</button>
-
-	<input
-		type="file"
-		bind:this={fileInput}
-		onchange={extractShapesFromImage}
-		accept="image/*"
-		style="display: none;"
-	/>
-	<button
-		onclick={() => fileInput.click()}
-		disabled={isLoadingFromImage || !$isReady}
-	>
-		{isLoadingFromImage ? "처리 중..." : "사진으로 다이어그램 만들기"}
-	</button>
-	{#if errorFromImage}
-		<span class="error-text">{errorFromImage}</span>
-	{/if}
-</div> -->
 
 <style lang="scss">
 	@use "$lib/style/main.scss" as *;
@@ -349,6 +400,7 @@
 			background-color: $colorWhite;
 			display: flex;
 			height: 100%;
+			flex-direction: column;
 
 			#add-flex{
 				display: flex;
@@ -377,6 +429,88 @@
 					height: auto; /* 이미지 비율 유지 */
 				}
 			}
+
+			.ai-mode{
+				justify-content: center;
+				width: 100%;
+			}
+
+			.normal-button{
+				@include typography-small;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				height: 48px;
+				margin: 0 8px;
+				border: none;
+				border-radius: 8px;
+				background: $colorBright;
+				color: $color-text-primary;
+				cursor: pointer;
+				transition: $transition;
+				position: relative;
+
+				&:hover {
+					background: $colorSymbolGreen;
+					color: $color-text-inverse;
+				}
+
+				&:disabled {
+					background: $colorMedium;
+					color: $colorWhite;
+					cursor: not-allowed;
+					opacity: 0.6;
+				}
+
+				.material-icons {
+					font-size: $font-size-large;
+				}
+			}
+
+			.shape-info {
+				display: flex;
+				flex-direction: column;
+				padding: 10px;
+				gap: 10px;
+
+				.shape-property {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+
+					label {
+						@include typography-body;
+						color: $color-text-primary;
+						width: 60px;
+					}
+
+					input[type="number"] {
+						width: 80px;
+						padding: 4px;
+						border: 1px solid $colorMedium;
+						border-radius: 4px;
+						@include typography-body;
+						transition: $transition border-color;
+
+						&:hover:not(:disabled) {
+							border-color: $colorSymbolGreen;
+						}
+
+						&:focus {
+							outline: none;
+							border-color: $colorSymbolGreen;
+							box-shadow: 0 0 6px rgba($colorSymbolGreen, 0.2);
+						}
+
+						&:disabled {
+							background: $colorMedium;
+							color: $color-text-tertiary;
+							cursor: not-allowed;
+							opacity: 0.6;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -392,7 +526,7 @@
 			$transition border-color,
 			$transition box-shadow;
 
-		&:hover {
+		&:hover:not(:disabled) {
 			border-color: $colorSymbolGreen;
 			box-shadow: 0 0 6px rgba($colorSymbolGreen, 0.2);
 		}

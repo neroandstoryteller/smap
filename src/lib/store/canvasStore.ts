@@ -8,6 +8,8 @@ import { Group } from 'konva/lib/Group';
 import { get } from 'svelte/store';
 import { exp } from 'three/tsl';
 import { read } from '$app/server';
+import { mapName } from './schoolDataStore';
+import { saveShapes } from '$lib/database/firestore';
 
 const maxHistorySteps: number = 50;
 
@@ -22,7 +24,7 @@ export const konvaModule = writable<typeof Konva | null>(null);
 export const transformer = writable<Konva.Transformer | null>(null);
 
 export const isReady = writable<boolean>(false);
-export const editable = writable<boolean>(true);
+export const editable = writable<boolean>(false);
 export const isDrawingLine = writable<boolean>(false);
 
 export const history = writable<ShapeData[][]>([[]]);
@@ -464,4 +466,24 @@ function selectShape(group: Konva.Group) {
         currentTransformer!.nodes([group]);
     }
     refreshCanvas();
+}
+
+export function save(){
+    const ready = get(isReady);
+
+    if (!ready) return;
+
+    const currentMapName = get(mapName);
+    const currentCanvasState = getCanvasState();
+
+    if (!currentMapName || !currentCanvasState) return;
+
+    try{
+        saveShapes(currentMapName, currentCanvasState)
+        console.log("canvas saved");
+        alert("저장되었습니다.");
+    }
+    catch(e){
+        alert(`저장 실패: ${e}`)
+    }
 }

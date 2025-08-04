@@ -18,7 +18,10 @@
         restoreCanvas,
         getShapeData,
 
-        addGroup
+        addGroup,
+
+        save
+
 
 	} from "$lib/store/canvasStore";
 	import { saveShapes } from "$lib/database/firestore";
@@ -56,8 +59,8 @@
                                 cut();
                                 break;
                             case "s":
-                                // No functionality for Ctrl+S as per instructions
-                                break;
+								save();
+								break;
                         }
                     } else {
                         // Handle Delete and Backspace keys without Ctrl/Cmd

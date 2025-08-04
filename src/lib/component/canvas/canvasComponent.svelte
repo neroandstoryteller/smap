@@ -1,5 +1,5 @@
 <script lang="ts">
-	export let shapeData;
+	export let shapeData: ShapeData[] | null;
 	import {
 		stage,
 		layer,
@@ -24,6 +24,7 @@
     import SnapUtil from "$lib/component/canvas/utils/snapUtil.svelte";
     import SideBarUtil from "$lib/component/canvas/utils/sideBarUtil.svelte";
     import ShortCutUtil from "./utils/shortCutUtil.svelte";
+    import type { ShapeData } from "$lib/models/shapes";
 
     let canvasContainer: HTMLDivElement;
 
@@ -36,9 +37,9 @@
 
     onMount(() => {
         (async () => {
-			console.log(shapeData)
             await initCanvas(canvasContainer);
-            if ($stage && $layer && $konvaModule && $transformer) {
+	
+            if ($stage && $layer && $konvaModule && $transformer && shapeData !== null) {
                 $isReady = true;
 				restoreCanvas(shapeData);
 				saveHistory();
