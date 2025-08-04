@@ -21,24 +21,26 @@
 	<div class="content">
 		<div class="post-list">
 			{#each posts as post}
-				<div class="post-item">
-					<img src={post.post_photo_url} alt={post.title} class="post-image" />
-					<div class="post-info">
-						<div class="post-header">
-							<h2 class="post-title">{post.title}</h2>
-							{#if tag === '일반' && post.tag !== '일반'}
-								<span class="post-tag">{post.tag}</span>
-							{/if}
-						</div>
-						{#if post.is_event}
-							<div class="event-info">
-								<span class="event-date">📅 {new Date(post.event_date).toLocaleString()}</span>
-								<span class="event-room">📍 {post.event_room}</span>
+				<a href="/{building_name}/agora/{post.id}" class="post-item-link">
+					<div class="post-item">
+						<img src={post.post_photo_url} alt={post.title} class="post-image" />
+						<div class="post-info">
+							<div class="post-header">
+								<h2 class="post-title">{post.title}</h2>
+								{#if tag === '일반' && post.tag !== '일반'}
+									<span class="post-tag">{post.tag}</span>
+								{/if}
 							</div>
-						{/if}
-						<p class="post-author">by {post.author}</p>
+							{#if post.is_event}
+								<div class="event-info">
+									<span class="event-date">📅 {new Date(post.event_date).toLocaleString()}</span>
+									<span class="event-room">📍 {post.event_room}</span>
+								</div>
+							{/if}
+							<p class="post-author">by {post.author}</p>
+						</div>
 					</div>
-				</div>
+				</a>
 			{:else}
 				<p>No posts in this category yet.</p>
 			{/each}
@@ -115,6 +117,12 @@
 	.post-list {
 		display: grid;
 		gap: 1rem;
+	}
+
+	.post-item-link {
+		text-decoration: none;
+		color: inherit;
+		display: block;
 	}
 
 	.post-item {

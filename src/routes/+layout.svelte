@@ -7,6 +7,8 @@
 	import { signInWithGoogle, signOut } from "$lib/database/firestore";
 	import { user } from "$lib/store/user";
 
+    import Chat from "./Chat.svelte";
+
     let { children } = $props();
     
     let schoolName = $derived($school.schoolName)
@@ -38,37 +40,26 @@
 </script>
 
 <div class="layout">
-    <aside class:open={isSidebarOpen}>
+    <aside class="menu-bar">
         <div>
-            <button class="logo" type="button" onclick={toggleSidebar}>
+            <a href="{gotoLink.main}" class="logo li" class:activated={gotoLink.main === path}>
                 <img src="/icon/smap_icon.svg" alt="icon">
-                <p>SMAP</p>
-            </button>
+            </a>
             <nav>
                 <hr>
                 <ul>
-                    <a class:activated={gotoLink.main === path} href="{gotoLink.main}" class="li">
-                        <span class="material-symbols-outlined">home</span>
-                        {#if isSidebarOpen}
-                            <span class="description" transition:fade>메인</span>
-                        {/if}
-                    </a>
                     <a class:activated={gotoLink.map === path} href="{gotoLink.map}/{schoolName}" class="li">
                         <span class="material-symbols-outlined">map</span>
-                        {#if isSidebarOpen}
-                            <span class="description" transition:fade>지도</span>
-                        {/if}
                     </a>
                     <a class:activated={gotoLink.search === path} href="{gotoLink.search}" class="li">
                         <span class="material-symbols-outlined">search</span>
-                        {#if isSidebarOpen}
-                            <span class="description" transition:fade>검색</span>
-                        {/if}
+                    </a>
+                    <a href={'#'} onclick={(e) => { e.preventDefault(); toggleSidebar(); }} class="li">
+                        <span class="material-symbols-outlined">smart_toy</span>
                     </a>
                 </ul>
             </nav>
         </div>
-
         <div class="user-section">
             {#if $user === undefined}
                 <!-- Loading -->
@@ -76,9 +67,6 @@
                 <div class="profile-container">
                     <button class="profile" onclick={toggleProfileMenu}>
                         <img src={$user.photoURL} alt="profile" />
-                        {#if isSidebarOpen}
-                        <span class="description" transition:fade>{$user.displayName}</span>
-                        {/if}
                     </button>
 
                     {#if isProfileMenuOpen}
@@ -93,19 +81,19 @@
             {:else}
                 <a href={'#'} onclick={(e) => { e.preventDefault(); signInWithGoogle(); }} class="li">
                     <span class="material-symbols-outlined">login</span>
-                    {#if isSidebarOpen}
-                        <span class="description" transition:fade>로그인</span>
-                    {/if}
                 </a>
             {/if}
         </div>
     </aside>
-    
+
     {#if isSidebarOpen}
+        <aside class="ai-sidebar" transition:fade>
+            <Chat />
+        </aside>
         <div class="overlay" onclick={toggleSidebar} transition:fade></div>
     {/if}
 
-    <div class="content" class:sidebar-open={isSidebarOpen}>
+    <div class="content">
         <main>
             {@render children()}
         </main>
@@ -114,6 +102,37 @@
 
 <style lang="scss">
     @use '$lib/style/main.scss' as *;
+
+    .layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .menu-bar {
+        width: 70px; /* 고정 너비 */
+        background-color: $colorWhite;
+        padding: 10px;
+        box-sizing: border-box;
+        box-shadow: $boxShadow;
+        position: fixed;
+        height: 100%;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: $transition;
+    }
+
+    .ai-sidebar {
+        width: 300px;
+        background-color: $colorWhite;
+        box-shadow: $boxShadow;
+        position: fixed;
+        height: 100%;
+        left: 70px; /* 메뉴바 너비만큼 옆에 위치 */
+        z-index: 1100;
+        transition: $transition;
+    }
 
     .profile-container {
         position: relative;
@@ -129,7 +148,7 @@
         box-shadow: $boxShadow;
         padding: 5px;
         margin-bottom: 10px;
-        z-index: 1100;
+        z-index: 1200;
 
         .li {
             width: 100%;
@@ -168,58 +187,19 @@
         z-index: 500;
     }
 
-    .layout {
-        display: flex;
-        min-height: 100vh;
-    }
-
-    aside {
-        width: 70px;
-        background-color: $colorWhite;
-        padding: 10px;
-        box-sizing: border-box;
-        box-shadow: $boxShadow;
-        transition: $transition;
-        overflow: visible; // Allow menu to pop out
-        position: fixed;
-        height: 100%;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-
-        &.open {
-            width: 300px;
-        }
-    }
-
     .logo {
         background-color: transparent;
         border: transparent;
         margin: 0;
-        padding: 0;
+        padding: 10px;
         display: flex;
         align-items: center;
+        justify-content: center;
         cursor: pointer;
-
-        p {
-            transition: 0.3s ease;
-            font-size: 30px;
-            font-weight: bold;
-            letter-spacing: -26px;
-            margin: 0 0 4px 0;
-            color: $colorBlack;
-            opacity: 0;
-        }
 
         img {
             width: 50px;
             height: 50px;
-        }
-
-        aside.open & p {
-            letter-spacing: 3px;
-            opacity: 1;
         }
     }
 
@@ -232,6 +212,7 @@
     .li {
         display: flex;
         align-items: center;
+        justify-content: center;
         padding: 10px;
         cursor: pointer;
         transition: $transition;
@@ -258,24 +239,12 @@
     }
 
     .description {
-        font-size: 20px;
-        margin-left: 10px;
-        transition: opacity 0.2s ease; // Faster opacity transition
-    }
-
-    // Sidebar closed state for description
-    aside:not(.open) .description {
-        opacity: 0;
-    }
-
-    // Sidebar open state for description
-    aside.open .description {
-        opacity: 1;
+       display: none;
     }
 
     .content {
         flex: 1;
-        margin-left: 70px;
+        margin-left: 70px; /* 메뉴바 너비만큼 마진 */
         transition: $transition
     }
 

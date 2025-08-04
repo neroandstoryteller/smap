@@ -15,19 +15,17 @@ import {
 	startAfter,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { 
-    getAuth, 
-    signInWithPopup, // signInWithRedirect 대신 signInWithPopup을 사용합니다.
-    signOut as firebaseSignOut, 
-    GoogleAuthProvider, 
-    onAuthStateChanged, 
-    type User 
-} from "firebase/auth";
+import {
+	getAuth,
+	signInWithPopup, // signInWithRedirect 대신 signInWithPopup을 사용합니다.
+	signOut as firebaseSignOut,
+	GoogleAuthProvider,
+	onAuthStateChanged,
+	type User
+} from 'firebase/auth';
 import { firebaseConfig } from './firebaseConfig';
 import type { ShapeData } from '../models/shapes';
 import { error } from '@sveltejs/kit';
-import { writable } from "svelte/store";
-
 import { getStorage } from 'firebase/storage';
 
 // --- Initialization (Single Point of Truth) ---
@@ -39,20 +37,19 @@ export const storage = getStorage(app);
 // --- Auth ---
 const provider = new GoogleAuthProvider();
 
-
 export async function signInWithGoogle() {
-    try {
-        const result = await signInWithPopup(auth, provider);
-        // signInWithPopup이 성공하면 onAuthStateChanged가 자동으로 호출되므로,
-        // 여기서 user.set()을 다시 할 필요는 없습니다.
-        console.log("Sign-in successful, user:", result.user);
-    } catch (error) {
-        console.error("Sign-in failed:", error);
-    }
+	try {
+		const result = await signInWithPopup(auth, provider);
+		// signInWithPopup이 성공하면 onAuthStateChanged가 자동으로 호출되므로,
+		// 여기서 user.set()을 다시 할 필요는 없습니다.
+		console.log('Sign-in successful, user:', result.user);
+	} catch (error) {
+		console.error('Sign-in failed:', error);
+	}
 }
 
 export function signOut() {
-  firebaseSignOut(auth);
+	firebaseSignOut(auth);
 }
 
 // --- Firestore ---
@@ -137,7 +134,7 @@ export async function getPosts(options: {
 		);
 		const documentSnapshots = await getDocs(q_for_startAfter);
 		const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-		if(lastVisible){
+		if (lastVisible) {
 			queryConstraints.push(startAfter(lastVisible));
 		}
 	}
@@ -222,4 +219,21 @@ export async function getEvents(options: { building_name: string }): Promise<Pos
 		} as Post);
 	});
 	return events;
+}
+
+export async function getPost(post_uid: string): Promise<Post | null> {
+	const docRef = doc(db, 'posts', post_uid);
+	const docSnap = await getDoc(docRef);
+
+	if (docSnap.exists()) {
+		const data = docSnap.data();
+		return {
+			id: docSnap.id,
+			...data,
+			created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at,
+			event_date: data.event_date?.toDate ? data.event_date.toDate() : data.event_date
+		} as Post;
+	} else {
+		return null;
+	}
 }
