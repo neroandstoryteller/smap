@@ -4,6 +4,8 @@
     import { page } from "$app/state";
     import { initSchool, school } from "$lib/store/schoolDataStore";
     import { onMount } from "svelte";
+	import { signInWithGoogle, signOut } from "$lib/database/firestore";
+	import { user } from "$lib/store/user";
 
     let { children } = $props();
     
@@ -12,9 +14,14 @@
     const path = $derived(page.url.pathname);
 
     let isSidebarOpen = $state(false);
+    let isProfileMenuOpen = $state(false);
 
     function toggleSidebar() {
         isSidebarOpen = !isSidebarOpen;
+    }
+
+    function toggleProfileMenu() {
+        isProfileMenuOpen = !isProfileMenuOpen;
     }
 
     const gotoLink = $state({
@@ -32,49 +39,70 @@
 
 <div class="layout">
     <aside class:open={isSidebarOpen}>
-        <button class="logo" type="button" onclick={toggleSidebar}>
-            <img src="/icon/smap_icon.svg" alt="icon">
-            <p>SMAP</p>
-        </button>
-        <nav>
-            <hr>
-            <ul>
-                <a class:activated={gotoLink.main === path} href="{gotoLink.main}" class="li">
-                    <span class="material-symbols-outlined">home</span>
-                    {#if isSidebarOpen}
-                        <span class="description" transition:fade>메인</span>
+        <div>
+            <button class="logo" type="button" onclick={toggleSidebar}>
+                <img src="/icon/smap_icon.svg" alt="icon">
+                <p>SMAP</p>
+            </button>
+            <nav>
+                <hr>
+                <ul>
+                    <a class:activated={gotoLink.main === path} href="{gotoLink.main}" class="li">
+                        <span class="material-symbols-outlined">home</span>
+                        {#if isSidebarOpen}
+                            <span class="description" transition:fade>메인</span>
+                        {/if}
+                    </a>
+                    <a class:activated={gotoLink.map === path} href="{gotoLink.map}/{schoolName}" class="li">
+                        <span class="material-symbols-outlined">map</span>
+                        {#if isSidebarOpen}
+                            <span class="description" transition:fade>지도</span>
+                        {/if}
+                    </a>
+                    <a class:activated={gotoLink.search === path} href="{gotoLink.search}" class="li">
+                        <span class="material-symbols-outlined">search</span>
+                        {#if isSidebarOpen}
+                            <span class="description" transition:fade>검색</span>
+                        {/if}
+                    </a>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="user-section">
+            {#if $user === undefined}
+                <!-- Loading -->
+            {:else if $user}
+                <div class="profile-container">
+                    <button class="profile" onclick={toggleProfileMenu}>
+                        <img src={$user.photoURL} alt="profile" />
+                        {#if isSidebarOpen}
+                        <span class="description" transition:fade>{$user.displayName}</span>
+                        {/if}
+                    </button>
+
+                    {#if isProfileMenuOpen}
+                        <div class="profile-menu" transition:fade>
+                            <a href={'#'} onclick={(e) => { e.preventDefault(); signOut(); isProfileMenuOpen = false; }} class="li">
+                                <span class="material-symbols-outlined">logout</span>
+                                <span class="description">로그아웃</span>
+                            </a>
+                        </div>
                     {/if}
-                </a>
-                <a class:activated={gotoLink.map === path} href="{gotoLink.map}/{schoolName}" class="li">
-                    <span class="material-symbols-outlined">map</span>
-                    {#if isSidebarOpen}
-                        <span class="description" transition:fade>지도</span>
-                    {/if}
-                </a>
-                <a class:activated={gotoLink.search === path} href="{gotoLink.search}" class="li">
-                    <span class="material-symbols-outlined">search</span>
-                    {#if isSidebarOpen}
-                        <span class="description" transition:fade>검색</span>
-                    {/if}
-                </a>
-                <a class:activated={gotoLink.login === path} href="{gotoLink.login}" class="li">
+                </div>
+            {:else}
+                <a href={'#'} onclick={(e) => { e.preventDefault(); signInWithGoogle(); }} class="li">
                     <span class="material-symbols-outlined">login</span>
                     {#if isSidebarOpen}
                         <span class="description" transition:fade>로그인</span>
                     {/if}
                 </a>
-                <a class:activated={gotoLink.signup === path} href="{gotoLink.signup}" class="li">
-                    <span class="material-symbols-outlined">person_add</span>
-                    {#if isSidebarOpen}
-                        <span class="description" transition:fade>회원가입</span>
-                    {/if}
-                </a>
-            </ul>
-        </nav>
+            {/if}
+        </div>
     </aside>
     
     {#if isSidebarOpen}
-        <div class="overlay" transition:fade></div>
+        <div class="overlay" onclick={toggleSidebar} transition:fade></div>
     {/if}
 
     <div class="content" class:sidebar-open={isSidebarOpen}>
@@ -86,6 +114,50 @@
 
 <style lang="scss">
     @use '$lib/style/main.scss' as *;
+
+    .profile-container {
+        position: relative;
+    }
+
+    .profile-menu {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        width: 100%;
+        background-color: $colorWhite;
+        border-radius: $borderRadius;
+        box-shadow: $boxShadow;
+        padding: 5px;
+        margin-bottom: 10px;
+        z-index: 1100;
+
+        .li {
+            width: 100%;
+            box-sizing: border-box;
+        }
+    }
+
+    .profile {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        color: $color-text-primary;
+        font-size: 20px;
+
+        &:hover {
+            background-color: $colorBright;
+        }
+
+        img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+    }
 
     .overlay{
         position: fixed;
@@ -102,17 +174,19 @@
     }
 
     aside {
-        width: 50px;
+        width: 70px;
         background-color: $colorWhite;
         padding: 10px;
+        box-sizing: border-box;
         box-shadow: $boxShadow;
         transition: $transition;
-        overflow: hidden;
+        overflow: visible; // Allow menu to pop out
         position: fixed;
         height: 100%;
         z-index: 1000;
         display: flex;
         flex-direction: column;
+        justify-content: space-between;
 
         &.open {
             width: 300px;
@@ -162,6 +236,7 @@
         cursor: pointer;
         transition: $transition;
         color: $color-text-primary;
+        border-radius: $borderRadius;
 
         span{
             white-space:nowrap;
@@ -185,10 +260,15 @@
     .description {
         font-size: 20px;
         margin-left: 10px;
-        opacity: 0;
-        transition: $transition
+        transition: opacity 0.2s ease; // Faster opacity transition
     }
 
+    // Sidebar closed state for description
+    aside:not(.open) .description {
+        opacity: 0;
+    }
+
+    // Sidebar open state for description
     aside.open .description {
         opacity: 1;
     }
@@ -202,6 +282,8 @@
     main {
         display: flex;
         flex-flow: column;
+        overflow: auto;
+        align-items: center;
         width: 100%;
         height: 100%;
     }
