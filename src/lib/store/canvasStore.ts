@@ -192,6 +192,10 @@ export function getShapeData(group: Group) {
 
     const shape = group.findOne(".main-shape") as Konva.Shape;
     const text = group.findOne(".text-node") as Konva.Text;
+
+    const description = group.getAttr("description");
+    const images = group.getAttr("images");
+
     if (!shape) return;
 
     const shapeData: ShapeData = {
@@ -204,6 +208,9 @@ export function getShapeData(group: Group) {
         stroke: (shape.stroke() as string) || "#000000",
         strokeWidth: shape.strokeWidth() || 1,
         text: text ? text.text() : "",
+
+        description: description || "",
+        images: images || []
     };
 
     if (shape instanceof currentKonvaModule!.Rect) {
@@ -257,17 +264,20 @@ export function addGroup(shapeConfig: any, text: string) {
         draggable: true,
     });
 
+    if (shapeConfig.description) group.setAttr("description", shapeConfig.description);
+    if (shapeConfig.images) group.setAttr("images", shapeConfig.images);
+
     const shapeType = shapeConfig.type as "Rect" | "Circle" | "Line";
     let shape: Konva.Shape;
 
     const newShapeConfig = { ...shapeConfig };
-    delete newShapeConfig.type;
-    delete newShapeConfig.x;
-    delete newShapeConfig.y;
-    delete newShapeConfig.rotation;
-    delete newShapeConfig.text;
-    delete newShapeConfig.draggable;
-    delete newShapeConfig.id;
+    // delete newShapeConfig.type;
+    // delete newShapeConfig.x;
+    // delete newShapeConfig.y;
+    // delete newShapeConfig.rotation;
+    // delete newShapeConfig.text;
+    // delete newShapeConfig.draggable;
+    // delete newShapeConfig.id;
 
     if (shapeType === "Circle") {
         const radius = shapeConfig.radius || 50;
@@ -442,6 +452,31 @@ function editText(group: Konva.Group) {
     );
 }
 
+function unMarkSelectedShape(){
+    const currentSelectedShape = get(selectedShape);
+
+    if(currentSelectedShape){
+        const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
+        lastShape.stroke("black");
+        lastShape.strokeWidth(2);
+    }
+}
+
+function markSelectedShape(){
+    const currentSelectedShape = get(selectedShape);
+
+    if(currentSelectedShape){
+        const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
+        lastShape.stroke("#3BFF66");
+        lastShape.strokeWidth(5);
+    }
+}
+
+export function resetSelectedShape() {
+    unMarkSelectedShape();
+    selectedShape.set(null);
+}
+
 function selectShape(group: Konva.Group) {
     const ready = get(isReady);
     if (!ready) return;
@@ -451,9 +486,13 @@ function selectShape(group: Konva.Group) {
 
     currentTransformer!.nodes([]);
 
+    unMarkSelectedShape();
+
     selectedShape.set(group);
     const shape = group.findOne(".main-shape") as Konva.Shape;
     if (!shape) return;
+
+    markSelectedShape();
 
     const shapeFill = shape.fill();
     if (typeof shapeFill === "string") {

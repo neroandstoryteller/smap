@@ -1,5 +1,6 @@
 <script lang="ts">
-	export let shapeData: ShapeData[] | null;
+	const { shapeData }: { shapeData: ShapeData[] | null } = $props();
+	
 	import {
 		stage,
 		layer,
@@ -17,14 +18,18 @@
         removeCanvas,
         refreshCanvas,
 
-        restoreCanvas
+        restoreCanvas,
+
+        resetSelectedShape
+
 
 	} from "$lib/store/canvasStore";
     import { onMount } from "svelte";
     import SnapUtil from "$lib/component/canvas/utils/snapUtil.svelte";
-    import SideBarUtil from "$lib/component/canvas/utils/sideBarUtil.svelte";
-    import ShortCutUtil from "./utils/shortCutUtil.svelte";
+    import SideBarComponent from "$lib/component/canvas/sideBarComponent.svelte";
+    import ShortCutComponent from "./canvas/shortCutComponent.svelte";
     import type { ShapeData } from "$lib/models/shapes";
+    import Konva from "konva";
 
     let canvasContainer: HTMLDivElement;
 
@@ -41,8 +46,10 @@
 	
             if ($stage && $layer && $konvaModule && $transformer && shapeData !== null) {
                 $isReady = true;
+				$editable = false;
 				restoreCanvas(shapeData);
 				saveHistory();
+				applyEditable();
                 console.log("Ready");
             }
 
@@ -71,7 +78,7 @@
             $stage!.on('mousedown touchstart', (e) => {
 				// 1. Clear selection logic
 				if (e.target === $stage) {
-					$selectedShape = null;
+					resetSelectedShape();
 					$transformer!.nodes([]);
 					refreshCanvas();
 				}
@@ -85,13 +92,30 @@
             removeCanvas();
         };
     });
+
+	function applyEditable() {
+		if (!$layer) return;
+		$layer.getChildren().forEach(shape => {
+			shape.draggable($editable); // Set draggable based on editable state
+		});
+		$transformer!.nodes([]); // Clear transformer nodes to disable it
+		$transformer!.visible($editable); // Show/hide transformer based on editable state
+	}
+
+	$effect(() => {
+		if (!$isReady) return;
+
+		applyEditable();
+	});
 </script>
 
 <div class="canvas-container" bind:this={canvasContainer}></div>
 
-<SideBarUtil />
-<SnapUtil />
-<ShortCutUtil />
+<SideBarComponent />
+{#if $editable}
+	<SnapUtil />
+	<ShortCutComponent />
+{/if}
 
 <style>
     .canvas-container {

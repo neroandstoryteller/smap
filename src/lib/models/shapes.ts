@@ -12,4 +12,7 @@ export interface ShapeData {
 	stroke?: string;
 	strokeWidth?: number;
 	text?: string;
+
+	images?: string[];
+	description?: string;
 } 

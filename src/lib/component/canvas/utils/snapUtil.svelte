@@ -20,7 +20,7 @@
     // 스냅 감지 거리 (픽셀 단위)
     const snapTolerance = 5;
     // 한 줄 정렬 감지 거리 (y 또는 x 차이)
-    const lineTolerance = 20;
+    const lineTolerance = 8;
 
     function getGroupSize(group: Konva.Group) {
         // Group 내 Shape 노드(사각형 또는 원) 선택
