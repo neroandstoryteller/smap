@@ -48,7 +48,7 @@
             <nav>
                 <hr>
                 <ul>
-                    <a class:activated={gotoLink.map === path} href="{gotoLink.map}/{schoolName}" class="li">
+                    <a class:activated={gotoLink.map === path} href="{schoolName}{gotoLink.map}" class="li">
                         <span class="material-symbols-outlined">map</span>
                     </a>
                     <a class:activated={gotoLink.search === path} href="{gotoLink.search}" class="li">
