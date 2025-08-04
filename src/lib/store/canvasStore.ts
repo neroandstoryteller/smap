@@ -47,7 +47,7 @@ async function createNewCanvas(container: HTMLDivElement) {
     const newStage = new Konva.Stage({
         container: container,
         listening: true,
-        width: window.innerWidth - 70,
+        width: window.innerWidth - 90,
         height: window.innerHeight,
         draggable: true,
     });
@@ -376,7 +376,8 @@ function bindShapeEvents(group: Konva.Group) {
 
 function editText(group: Konva.Group) {
     const ready = get(isReady);
-    if (!ready) return;
+    const currentEditable = get(editable);
+    if (!ready || !currentEditable) return;
 
     const currentStage = get(stage);
 
@@ -511,6 +512,7 @@ export function save(){
     const ready = get(isReady);
 
     if (!ready) return;
+    unMarkSelectedShape();
 
     const currentMapName = get(mapName);
     const currentCanvasState = getCanvasState();

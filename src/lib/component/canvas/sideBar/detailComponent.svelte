@@ -137,8 +137,10 @@
         </div>
     {:else}
         <div class="shape-property">
-            <label for="description" class="label">설명</label>
-            <div class="description">{descriptionInput}</div>
+            {#if descriptionInput}
+                <label for="description" class="label">설명</label>
+                <div class="description">{descriptionInput}</div>
+            {/if}
         </div>
     {/if}
     

@@ -35,7 +35,7 @@
 
     function handleResize() {
         if ($stage) {
-            $stage.width(window.innerWidth - 70);
+            $stage.width(window.innerWidth - 90);
             $stage.height(window.innerHeight);
         }
     }
@@ -119,7 +119,7 @@
 
 <style>
     .canvas-container {
-        width: calc(100vh - 70px);
+        width: calc(100vw - 90px);
         height: 100vh;
     }
 </style>
