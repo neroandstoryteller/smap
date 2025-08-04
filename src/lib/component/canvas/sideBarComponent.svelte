@@ -21,14 +21,14 @@
 	import { saveShapes } from "$lib/database/firestore";
 	import Konva from "konva";
 	import type { ShapeData } from "$lib/models/shapes";
-	import { mapName, school } from "$lib/store/schoolDataStore";
+	import { school } from "$lib/store/schoolDataStore";
     import AddShapeComponent from "./sideBar/addShapeComponent.svelte";
     import ShapeInfoComponent from "./sideBar/shapeInfoComponent.svelte";
 	import DetailComponent from "./sideBar/detailComponent.svelte";
     import { mod } from "three/tsl";
 
 
-	let schoolName = $derived($school.schoolName);
+	let buildingName = $derived($school.buildingName);
 
 	let isLoadingFromImage = $state(false);
 	let errorFromImage: string | null = $state(null);

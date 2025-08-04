@@ -21,9 +21,9 @@
 	import { saveShapes } from "$lib/database/firestore";
 	import Konva from "konva";
 	import type { ShapeData } from "$lib/models/shapes";
-	import { mapName, school } from "$lib/store/schoolDataStore";
+	import { school } from "$lib/store/schoolDataStore";
 
-	let schoolName = $derived($school.schoolName);
+	let buildingName = $derived($school.buildingName);
 
 	// let lineAnchors: Konva.Circle[] = [];
 

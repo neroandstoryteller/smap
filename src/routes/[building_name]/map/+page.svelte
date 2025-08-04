@@ -1,18 +1,18 @@
 <script lang="ts">
     import CanvasComponent from "$lib/component/canvasComponent.svelte";
     import type { ShapeData } from '$lib/models/shapes';
-    import { mapName } from "$lib/store/schoolDataStore";
+    import { school } from "$lib/store/schoolDataStore";
     import { onMount } from "svelte";
 
 	export let data: {
-		mapName: string;
+		buildingName: string;
 		shapes: ShapeData[];
 	};
     
     const shapeData = data.shapes;
 
     onMount(()=>{
-        $mapName = data.mapName;
+        $school.buildingName = data.buildingName;
     })
 </script>
 

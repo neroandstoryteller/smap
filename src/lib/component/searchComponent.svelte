@@ -3,15 +3,15 @@
     import { slide } from 'svelte/transition';
 	import { school, setSchoolName } from '$lib/store/schoolDataStore';
 
-	let selectedSchoolName = $derived($school.schoolName);
+	let selectedSchoolName = $derived($school.buildingName);
 
-	let schoolName = $state('');
+	let buildingName = $state('');
 	let schoolList: any[] = $state([]);
 	let isLoading = $state(false);
 	let error: string | null = $state(null);
 
 	async function searchSchool() {
-		if (!schoolName.trim()) {
+		if (!buildingName.trim()) {
 			error = '학교 이름을 입력해주세요.';
 			return;
 		}
@@ -19,7 +19,7 @@
 		error = null;
 		schoolList = [];
 		try {
-			const response = await fetch(`/api/search?name=${encodeURIComponent(schoolName)}`);
+			const response = await fetch(`/api/search?name=${encodeURIComponent(buildingName)}`);
 			if (!response.ok) {
 				const err = await response.json();
 				throw new Error(err.message || '학교 검색에 실패했습니다.');
@@ -54,7 +54,7 @@
 		<div class="search-form">
 			<input
 				type="text"
-				bind:value={schoolName}
+				bind:value={buildingName}
 				onkeydown={(e) => e.key === 'Enter' && searchSchool()}
 				placeholder="학교 이름을 입력하세요 (예: 서천고)"
 			/>

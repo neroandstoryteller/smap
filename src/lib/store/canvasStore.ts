@@ -8,7 +8,7 @@ import { Group } from 'konva/lib/Group';
 import { get } from 'svelte/store';
 import { exp } from 'three/tsl';
 import { read } from '$app/server';
-import { mapName } from './schoolDataStore';
+import { school } from './schoolDataStore';
 import { saveShapes } from '$lib/database/firestore';
 
 const maxHistorySteps: number = 50;
@@ -514,13 +514,13 @@ export function save(){
     if (!ready) return;
     unMarkSelectedShape();
 
-    const currentMapName = get(mapName);
+    const currentBuildingName = get(school).buildingName;
     const currentCanvasState = getCanvasState();
 
-    if (!currentMapName || !currentCanvasState) return;
+    if (!currentBuildingName || !currentCanvasState) return;
 
     try{
-        saveShapes(currentMapName, currentCanvasState)
+        saveShapes(currentBuildingName, currentCanvasState)
         console.log("canvas saved");
         alert("저장되었습니다.");
     }
