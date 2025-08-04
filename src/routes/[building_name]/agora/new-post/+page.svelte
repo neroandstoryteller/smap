@@ -1,10 +1,11 @@
 <script lang="ts">
-	import type { PageData } from '../new_post/$types';
+	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { db, storage, auth } from '$lib/database/firebaseConfig';
+	import { db, storage } from '$lib/database/firestore';
 	import { addDoc, collection } from 'firebase/firestore';
 	import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-	import { onMount } from 'svelte';
+	import { user } from '$lib/store/user';
+	import type { User } from 'firebase/auth';
 
 	export let data: PageData;
 	let { building_name } = data;
@@ -14,18 +15,13 @@
 	let tag = '일반';
 	let imageFile: File | null = null;
 	let isLoading = false;
-	let currentUser: any = null;
+	let is_event = false;
+	let event_date = '';
+	let event_room = '';
 
-	onMount(() => {
-		const unsubscribe = auth.onAuthStateChanged((user) => {
-			if (user) {
-				currentUser = user;
-			} else {
-				// Redirect to login or handle unauthenticated user
-				goto('/login');
-			}
-		});
-		return unsubscribe;
+	let currentUser: User | null | undefined;
+	user.subscribe((value) => {
+		currentUser = value;
 	});
 
 	const handleImageUpload = (e: Event) => {
@@ -44,14 +40,14 @@
 		isLoading = true;
 
 		try {
-			let imageUrl = '';
+			let imageUrl = 'default.jpg';
 			if (imageFile) {
-				const storageRef = ref(storage, `posts/${Date.now()}_${imageFile.name}`);
+				const storageRef = ref(storage, `post-images/${currentUser.uid}/${Date.now()}_${imageFile.name}`);
 				await uploadBytes(storageRef, imageFile);
 				imageUrl = await getDownloadURL(storageRef);
 			}
 
-			await addDoc(collection(db, 'posts'), {
+			const postData: any = {
 				building_name,
 				title,
 				content,
@@ -59,8 +55,16 @@
 				author_id: currentUser.uid,
 				author: currentUser.displayName || 'Anonymous',
 				post_photo_url: imageUrl,
-				created_at: new Date()
-			});
+				created_at: new Date(),
+				is_event
+			};
+
+			if (is_event) {
+				postData.event_date = new Date(event_date);
+				postData.event_room = event_room;
+			}
+
+			await addDoc(collection(db, 'posts'), postData);
 
 			alert('포스트가 성공적으로 등록되었습니다.');
 			goto(`/${building_name}/agora`);
@@ -89,6 +93,24 @@
 				<option value="공지">공지</option>
 			</select>
 		</div>
+
+		<div class="form-group">
+			<label>
+				<input type="checkbox" bind:checked={is_event} />
+				이벤트
+			</label>
+		</div>
+
+		{#if is_event}
+			<div class="form-group">
+				<label for="event_date">이벤트 날짜</label>
+				<input type="datetime-local" id="event_date" bind:value={event_date} required />
+			</div>
+			<div class="form-group">
+				<label for="event_room">이벤트 장소</label>
+				<input type="text" id="event_room" bind:value={event_room} required />
+			</div>
+		{/if}
 
 		<div class="form-group">
 			<label for="content">내용</label>

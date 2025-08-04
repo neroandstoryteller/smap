@@ -4,7 +4,8 @@
     import { page } from "$app/state";
     import { initSchool, school } from "$lib/store/schoolDataStore";
     import { onMount } from "svelte";
-	import { signInWithGoogle, signOut, user } from "$lib/database/firestore";
+	import { signInWithGoogle, signOut } from "$lib/database/firestore";
+	import { user } from "$lib/store/user";
 
     let { children } = $props();
     
@@ -281,6 +282,8 @@
     main {
         display: flex;
         flex-flow: column;
+        overflow: auto;
+        align-items: center;
         width: 100%;
         height: 100%;
     }

@@ -13,9 +13,9 @@
 	</div>
 
 	<div class="tabs">
+		<a href="?tag=일반" class:active={tag === '일반'}>일반</a>
 		<a href="?tag=질문" class:active={tag === '질문'}>질문</a>
 		<a href="?tag=공지" class:active={tag === '공지'}>공지</a>
-		<a href="?tag=일반" class:active={tag === '일반'}>일반</a>
 	</div>
 
 	<div class="content">
@@ -24,7 +24,18 @@
 				<div class="post-item">
 					<img src={post.post_photo_url} alt={post.title} class="post-image" />
 					<div class="post-info">
-						<h2 class="post-title">{post.title}</h2>
+						<div class="post-header">
+							<h2 class="post-title">{post.title}</h2>
+							{#if tag === '일반' && post.tag !== '일반'}
+								<span class="post-tag">{post.tag}</span>
+							{/if}
+						</div>
+						{#if post.is_event}
+							<div class="event-info">
+								<span class="event-date">📅 {new Date(post.event_date).toLocaleString()}</span>
+								<span class="event-room">📍 {post.event_room}</span>
+							</div>
+						{/if}
 						<p class="post-author">by {post.author}</p>
 					</div>
 				</div>
@@ -49,7 +60,7 @@
 	.agora-container {
 		padding: 2rem;
 		font-family: sans-serif;
-		max-width: 800px;
+		width: 800px;
 	}
 
 	.header {
@@ -131,15 +142,44 @@
 		flex-grow: 1;
 	}
 
+	.post-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		margin-bottom: 0.5rem;
+	}
+	
+	.post-tag {
+		font-size: 0.8rem;
+		padding: 0.2rem 0.5rem;
+		background-color: #eee;
+		border-radius: 4px;
+		color: #555;
+	}
+
 	.post-title {
 		font-size: 1.2rem;
-		margin: 0 0 0.5rem;
+		margin: 0;
 	}
 
 	.post-author {
 		font-size: 0.9rem;
 		color: #666;
 		margin: 0;
+	}
+
+	.event-info {
+		display: flex;
+		gap: 1rem;
+		font-size: 0.9rem;
+		color: #333;
+		margin-bottom: 0.5rem;
+	}
+
+	.event-date,
+	.event-room {
+		display: flex;
+		align-items: center;
 	}
 
 	.pagination {

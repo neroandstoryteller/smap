@@ -28,23 +28,16 @@ import type { ShapeData } from '../models/shapes';
 import { error } from '@sveltejs/kit';
 import { writable } from "svelte/store";
 
+import { getStorage } from 'firebase/storage';
+
 // --- Initialization (Single Point of Truth) ---
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 // --- Auth ---
 const provider = new GoogleAuthProvider();
-export const user = writable<User | null | undefined>(undefined, () => {
-    console.log('User store has a new subscriber');
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        console.log('[Auth State Change] Received user:', currentUser);
-        user.set(currentUser);
-    });
-    // onAuthStateChanged는 unsubscribe 함수를 반환합니다.
-    // 스토어의 구독자가 0이 되면 이 함수가 호출되어 리스너를 정리합니다.
-    return unsubscribe;
-});
 
 
 export async function signInWithGoogle() {
@@ -100,6 +93,9 @@ export interface Post {
 	author: string;
 	created_at: any; // Firestore Timestamp
 	tag: '질문' | '공지' | '일반';
+	is_event?: boolean;
+	event_date?: any;
+	event_room?: string;
 }
 
 export async function savePost(postData: Omit<Post, 'created_at' | 'id'>): Promise<string> {
@@ -120,25 +116,33 @@ export async function getPosts(options: {
 	building_name: string;
 	tag: '질문' | '공지' | '일반';
 	limit: number;
-	skip: number; 
-	startAfterDoc?: any;
+	skip: number;
 }): Promise<Post[]> {
 	const postsCol = collection(db, 'posts');
-	
+
 	const queryConstraints: QueryConstraint[] = [
 		where('building_name', '==', options.building_name),
 		where('tag', '==', options.tag),
 		orderBy('created_at', 'desc'),
+		limit(options.limit)
 	];
 
-	if (options.startAfterDoc) {
-		queryConstraints.push(startAfter(options.startAfterDoc));
+	if (options.skip > 0) {
+		const q_for_startAfter = query(
+			postsCol,
+			where('building_name', '==', options.building_name),
+			where('tag', '==', options.tag),
+			orderBy('created_at', 'desc'),
+			limit(options.skip)
+		);
+		const documentSnapshots = await getDocs(q_for_startAfter);
+		const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+		if(lastVisible){
+			queryConstraints.push(startAfter(lastVisible));
+		}
 	}
-	
-	queryConstraints.push(limit(options.limit));
 
 	const q = query(postsCol, ...queryConstraints);
-
 
 	const querySnapshot = await getDocs(q);
 	const posts: Post[] = [];
@@ -147,32 +151,75 @@ export async function getPosts(options: {
 		posts.push({
 			id: doc.id,
 			...data,
-			created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at
+			created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at,
+			event_date: data.event_date?.toDate ? data.event_date.toDate() : data.event_date
 		} as Post);
 	});
+	return posts;
+}
 
-	if (options.skip > 0 && !options.startAfterDoc) {
-		const allDocsQuery = query(
+export async function getAllPosts(options: {
+	building_name: string;
+	limit: number;
+	skip: number;
+}): Promise<Post[]> {
+	const postsCol = collection(db, 'posts');
+
+	const queryConstraints: QueryConstraint[] = [
+		where('building_name', '==', options.building_name),
+		orderBy('created_at', 'desc'),
+		limit(options.limit)
+	];
+
+	if (options.skip > 0) {
+		const q_for_startAfter = query(
 			postsCol,
 			where('building_name', '==', options.building_name),
-			where('tag', '==', options.tag),
 			orderBy('created_at', 'desc'),
-			limit(options.skip + options.limit)
-		)
-		const allDocsSnapshot = await getDocs(allDocsQuery);
-		const slicedDocs = allDocsSnapshot.docs.slice(options.skip);
-		
-		const slicedPosts: Post[] = [];
-		slicedDocs.forEach((doc) => {
-			const data = doc.data();
-			slicedPosts.push({
-				id: doc.id,
-				...data,
-				created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at
-			} as Post);
-		});
-		return slicedPosts;
+			limit(options.skip)
+		);
+		const documentSnapshots = await getDocs(q_for_startAfter);
+		const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+		if (lastVisible) {
+			queryConstraints.push(startAfter(lastVisible));
+		}
 	}
 
+	const q = query(postsCol, ...queryConstraints);
+
+	const querySnapshot = await getDocs(q);
+	const posts: Post[] = [];
+	querySnapshot.forEach((doc) => {
+		const data = doc.data();
+		posts.push({
+			id: doc.id,
+			...data,
+			created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at,
+			event_date: data.event_date?.toDate ? data.event_date.toDate() : data.event_date
+		} as Post);
+	});
 	return posts;
+}
+
+export async function getEvents(options: { building_name: string }): Promise<Post[]> {
+	const postsCol = collection(db, 'posts');
+	const q = query(
+		postsCol,
+		where('building_name', '==', options.building_name),
+		where('is_event', '==', true),
+		orderBy('event_date', 'asc')
+	);
+
+	const querySnapshot = await getDocs(q);
+	const events: Post[] = [];
+	querySnapshot.forEach((doc) => {
+		const data = doc.data();
+		events.push({
+			id: doc.id,
+			...data,
+			created_at: data.created_at?.toDate ? data.created_at.toDate() : data.created_at,
+			event_date: data.event_date?.toDate ? data.event_date.toDate() : data.event_date
+		} as Post);
+	});
+	return events;
 }
