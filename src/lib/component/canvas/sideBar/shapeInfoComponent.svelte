@@ -90,9 +90,9 @@
 	$effect(() => {
 		// Clean up previous event listeners to avoid duplicates
 		const oldShape = $selectedShape;
-		if (oldShape) {
-			oldShape.off('dragend transformend');
-		}
+		// if (oldShape) {
+		// 	oldShape.off('dragend transformend');
+		// }
 
 		// Set up event listeners for the new selected shape
 		if ($selectedShape && $isReady) {
@@ -119,9 +119,9 @@
 
 		// Cleanup event listeners when component or shape is destroyed
 		return () => {
-			if (oldShape) {
-				oldShape.off('dragend transformend');
-			}
+			// if (oldShape) {
+			// 	oldShape.off('dragend transformend');
+			// }
 		};
 	});
 
@@ -135,9 +135,7 @@
 		shapeRotation;
 		$fillColor;
 
-		if ($selectedShape && $isReady) {
-			updateShapeProperties();
-		}
+		updateShapeProperties();
 	});
 </script>
 

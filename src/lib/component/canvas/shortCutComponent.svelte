@@ -19,6 +19,7 @@
 		getShapeData,
 		addGroup,
 		save,
+		isEditingDetail,
 
         resetSelectedShape
 
@@ -46,6 +47,7 @@
 			if (ready) {
 				const handleKeydown = (event: KeyboardEvent) => {
 					if (event.ctrlKey || event.metaKey) {
+						if ($isEditingDetail) return;
 						event.preventDefault();
 						switch (event.key.toLowerCase()) {
 							case "z":

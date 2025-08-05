@@ -4,7 +4,8 @@
         editable,
         getShapeData,
         updateSelectedShapeDetails, // Import the new function
-        refreshCanvas
+        refreshCanvas,
+        isEditingDetail
     } from "$lib/store/canvasStore";
     import { uploadImage } from "$lib/database/firestore";
     import { Group } from "konva/lib/Group";
@@ -115,7 +116,8 @@
                 id="description"
                 value={descriptionInput}
                 oninput={(e) => (descriptionInput = e.currentTarget.value)}
-                onblur={handleDescriptionChange}
+                onblur={()=>{handleDescriptionChange(); $isEditingDetail = false;}}
+                onfocus={()=>$isEditingDetail = true}
                 disabled={!$selectedShape}
                 class="textarea"
                 rows="4"

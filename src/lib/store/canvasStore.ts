@@ -10,6 +10,7 @@ import { exp } from 'three/tsl';
 import { read } from '$app/server';
 import { school } from './schoolDataStore';
 import { saveShapes } from '$lib/database/firestore';
+import { boolean } from 'zod';
 
 const maxHistorySteps: number = 50;
 
@@ -23,9 +24,11 @@ export const selectedShape = writable<Konva.Group | null>(null);
 export const konvaModule = writable<typeof Konva | null>(null);
 export const transformer = writable<Konva.Transformer | null>(null);
 
+
 export const isReady = writable<boolean>(false);
 export const editable = writable<boolean>(false);
 export const isDrawingLine = writable<boolean>(false);
+export const isEditingDetail = writable<boolean>(false);
 
 export const history = writable<ShapeData[][]>([[]]);
 export const step = writable<number>(-1);
@@ -460,7 +463,6 @@ function unMarkSelectedShape(){
         const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
         if (!lastShape || typeof lastShape.stroke !== 'function') return;
         lastShape.stroke("black");
-        lastShape.strokeWidth(2);
     }
 }
 
@@ -471,7 +473,6 @@ function markSelectedShape() {
         const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
         if (!lastShape || typeof lastShape.stroke !== 'function') return;
         lastShape.stroke("#3BFF66");
-        lastShape.strokeWidth(5);
     }
 }
 
