@@ -56,9 +56,13 @@ export function signOut() {
 // --- Firestore ---
 
 export async function saveShapes(mapName: string, shapes: ShapeData[]): Promise<void> {
-	const docRef = doc(db, 'mapName', mapName);
-	await setDoc(docRef, { shapes });
-	console.log(`Shapes saved for ${mapName}`);
+	await fetch('/api/embedding', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({ mapName, shapes })
+	});
 }
 
 export async function loadShapes(
