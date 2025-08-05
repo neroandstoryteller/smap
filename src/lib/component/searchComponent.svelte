@@ -35,12 +35,10 @@
 		}
 	}
 
-	function goToSchoolPage(school: { name: string }) {
-		goto(`/map/${encodeURIComponent(school.name)}`);
-	}
 
 	function applySelectedSchoolName(school: { name: string }){
 		setSchoolName(school.name);
+		goto(`/${encodeURIComponent(school.name)}`);
 	}
 
 </script>
