@@ -458,18 +458,18 @@ function unMarkSelectedShape(){
 
     if(currentSelectedShape){
         const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
-        if(!lastShape.stroke()) return;
+        if (!lastShape || typeof lastShape.stroke !== 'function') return;
         lastShape.stroke("black");
         lastShape.strokeWidth(2);
     }
 }
 
-function markSelectedShape(){
+function markSelectedShape() {
     const currentSelectedShape = get(selectedShape);
 
-    if(currentSelectedShape){
+    if (currentSelectedShape) {
         const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
-        if(!lastShape.stroke()) return;
+        if (!lastShape || typeof lastShape.stroke !== 'function') return;
         lastShape.stroke("#3BFF66");
         lastShape.strokeWidth(5);
     }
