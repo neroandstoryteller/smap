@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 
 	// Chat state
 	let messages = $state([
@@ -37,7 +38,12 @@
 			const data = await response.json();
 
 			if (data.text) {
-				messages.push({ id: Date.now() + 1, text: data.text, sender: 'ai' });
+				const aiResponse = data.text as string;
+				if (aiResponse.startsWith('map?selectShapeName=')) {
+					goto(`/${mapName}/map?${aiResponse.split('?')[1]}`);
+					return;
+				}
+				messages.push({ id: Date.now() + 1, text: aiResponse, sender: 'ai' });
 			} else {
 				throw new Error('Invalid response from AI');
 			}
