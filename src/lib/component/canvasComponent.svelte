@@ -153,8 +153,8 @@
 <div class="canvas-container" bind:this={canvasContainer}></div>
 
 <SideBarComponent />
+<SnapUtil />
 {#if $editable}
-    <SnapUtil />
     <ShortCutComponent />
 {/if}
 
