@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '$lib/database/firestore';
+import { auth } from '$lib/database/firebase';
 
 export const user = writable<User | null | undefined>(undefined, (set) => {
 	console.log('User store has a new subscriber');

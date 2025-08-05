@@ -1,7 +1,4 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import {
-	getFirestore,
 	doc,
 	setDoc,
 	getDoc,
@@ -17,23 +14,15 @@ import {
 	type QueryConstraint
 } from 'firebase/firestore';
 import {
-	getAuth,
-	signInWithPopup, // signInWithRedirect 대신 signInWithPopup을 사용합니다.
+	signInWithPopup,
 	signOut as firebaseSignOut,
 	GoogleAuthProvider,
-	onAuthStateChanged,
 	type User
 } from 'firebase/auth';
-import { firebaseConfig } from './firebaseConfig';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, auth, storage } from './firebase'; // <- 변경된 부분
 import type { ShapeData } from '../models/shapes';
 import { error } from '@sveltejs/kit';
-import { writable } from "svelte/store";
-
-// --- Initialization (Single Point of Truth) ---
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
 
 // --- Auth ---
 const provider = new GoogleAuthProvider();
@@ -41,8 +30,6 @@ const provider = new GoogleAuthProvider();
 export async function signInWithGoogle() {
 	try {
 		const result = await signInWithPopup(auth, provider);
-		// signInWithPopup이 성공하면 onAuthStateChanged가 자동으로 호출되므로,
-		// 여기서 user.set()을 다시 할 필요는 없습니다.
 		console.log('Sign-in successful, user:', result.user);
 	} catch (error) {
 		console.error('Sign-in failed:', error);
@@ -56,9 +43,13 @@ export function signOut() {
 // --- Firestore ---
 
 export async function saveShapes(mapName: string, shapes: ShapeData[]): Promise<void> {
-	const docRef = doc(db, 'mapName', mapName);
-	await setDoc(docRef, { shapes });
-	console.log(`Shapes saved for ${mapName}`);
+	await fetch('/api/embedding', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({ mapName, shapes })
+	});
 }
 
 export async function loadShapes(

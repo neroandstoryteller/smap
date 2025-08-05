@@ -7,11 +7,11 @@
 	import { signInWithGoogle, signOut } from "$lib/database/firestore";
 	import { user } from "$lib/store/user";
 
-    import Chat from "./chat.svelte";
+    import Chat from "./Chat.svelte";
 
     let { children } = $props();
     
-    let buildingName = $derived($school.buildingName)
+    let schoolName = $derived($school.buildingName || '');
 
     const path = $derived(page.url.pathname);
 
@@ -28,8 +28,8 @@
 
     const gotoLink = $derived({
         main: "/",
-        map: `/${buildingName}/map`,
-        search: "/search",
+        map: `/${schoolName}/map`,
+        agora: `/${schoolName}/agora`,
         login: "/login",
         signup: "/signup",
     })
@@ -48,11 +48,11 @@
             <nav>
                 <hr>
                 <ul>
-                    <a class:activated={gotoLink.map === path} href="{schoolName}{gotoLink.map}" class="li">
+                    <a class:activated={gotoLink.map === path} href="{gotoLink.map}" class="li">
                         <span class="material-symbols-outlined">map</span>
                     </a>
-                    <a class:activated={gotoLink.search === path} href="{gotoLink.search}" class="li">
-                        <span class="material-symbols-outlined">search</span>
+                    <a class:activated={gotoLink.agora === path} href="{gotoLink.agora}" class="li">
+                        <span class="material-symbols-outlined">forum</span>
                     </a>
                     <a href={'#'} onclick={(e) => { e.preventDefault(); toggleSidebar(); }} class="li">
                         <span class="material-symbols-outlined">smart_toy</span>
