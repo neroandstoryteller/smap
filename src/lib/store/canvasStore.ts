@@ -458,6 +458,7 @@ function unMarkSelectedShape(){
 
     if(currentSelectedShape){
         const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
+        if(!lastShape.stroke()) return;
         lastShape.stroke("black");
         lastShape.strokeWidth(2);
     }
@@ -468,6 +469,7 @@ function markSelectedShape(){
 
     if(currentSelectedShape){
         const lastShape = currentSelectedShape.findOne(".main-shape") as Konva.Shape;
+        if(!lastShape.stroke()) return;
         lastShape.stroke("#3BFF66");
         lastShape.strokeWidth(5);
     }
@@ -478,7 +480,7 @@ export function resetSelectedShape() {
     selectedShape.set(null);
 }
 
-function selectShape(group: Konva.Group) {
+export function selectShape(group: Konva.Group) {
     const ready = get(isReady);
     if (!ready) return;
 
@@ -505,6 +507,8 @@ function selectShape(group: Konva.Group) {
     } else {
         currentTransformer!.nodes([group]);
     }
+
+    console.log(group.id());
     refreshCanvas();
 }
 
