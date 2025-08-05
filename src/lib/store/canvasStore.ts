@@ -512,6 +512,18 @@ export function selectShape(group: Konva.Group) {
     refreshCanvas();
 }
 
+export function updateSelectedShapeDetails(details: { description?: string, images?: string[] }) {
+    const shape = get(selectedShape);
+    if (shape) {
+        if (details.description !== undefined) {
+            shape.setAttr('description', details.description);
+        }
+        if (details.images !== undefined) {
+            shape.setAttr('images', details.images);
+        }
+    }
+}
+
 export function save(){
     const ready = get(isReady);
 

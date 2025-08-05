@@ -1,23 +1,12 @@
 <script lang="ts">
     import {
-        stage,
-        layer,
-        shapes,
         selectedShape,
-        konvaModule,
-        transformer,
-        isReady,
         editable,
-        isDrawingLine,
-        genId,
-        fillColor,
-        addGroup,
-        save,
-        refreshCanvas,
-        saveHistory,
         getShapeData,
+        updateSelectedShapeDetails, // Import the new function
+        refreshCanvas
     } from "$lib/store/canvasStore";
-    import { uploadImage, deleteImage } from "$lib/database/firestore";
+    import { uploadImage } from "$lib/database/firestore";
     import { Group } from "konva/lib/Group";
 
     let selectedShapeName: string = $state('');
@@ -30,7 +19,7 @@
         if ($selectedShape) {
             descriptionInput = $selectedShape.getAttr('description') || '';
             images = $selectedShape.getAttr('images') || [];
-            const shapeName = getShapeName($selectedShape)
+            const shapeName = getShapeName($selectedShape);
             selectedShapeName = shapeName || "";
         } else {
             descriptionInput = '';
@@ -45,21 +34,20 @@
             const file = input.files[0];
             const imageUrl = await uploadImage(file);
             
-            const currentImages = $selectedShape.getAttr('images') || [];
-            $selectedShape.setAttr('images', [...currentImages, imageUrl]);
-            images = [...images, imageUrl];
-
+            const newImages = [...images, imageUrl];
+            images = newImages; // Update local state
+            updateSelectedShapeDetails({ images: newImages }); // Update store
             refreshCanvas();
         }
     }
 
     async function handleDeleteImage(index: number) {
         if ($selectedShape && images[index]) {
-            const imageUrl = images[index];
             try {
-                // await deleteImage(imageUrl);
-                images = images.filter((_, i) => i !== index);
-                $selectedShape.setAttr('images', images);
+                // Deleting from storage can be added back if needed
+                const newImages = images.filter((_, i) => i !== index);
+                images = newImages; // Update local state
+                updateSelectedShapeDetails({ images: newImages }); // Update store
                 refreshCanvas();
             } catch (error) {
                 console.error('Failed to delete image:', error);
@@ -88,7 +76,7 @@
             const [movedImage] = newImages.splice(draggedIndex, 1);
             newImages.splice(index, 0, movedImage);
             images = newImages;
-            $selectedShape?.setAttr('images', newImages);
+            updateSelectedShapeDetails({ images: newImages });
             refreshCanvas();
             draggedIndex = null;
         };
@@ -99,10 +87,8 @@
     }
 
     function handleDescriptionChange() {
-        if ($selectedShape) {
-            $selectedShape.setAttr('description', descriptionInput);
-            refreshCanvas();
-        }
+        // Use the centralized function from the store
+        updateSelectedShapeDetails({ description: descriptionInput });
     }
 
     function getShapeName(shape: Group) {
@@ -127,8 +113,9 @@
             <label for="description" class="label">설명</label>
             <textarea
                 id="description"
-                bind:value={descriptionInput}
-                oninput={handleDescriptionChange}
+                value={descriptionInput}
+                oninput={(e) => (descriptionInput = e.currentTarget.value)}
+                onblur={handleDescriptionChange}
                 disabled={!$selectedShape}
                 class="textarea"
                 rows="4"
