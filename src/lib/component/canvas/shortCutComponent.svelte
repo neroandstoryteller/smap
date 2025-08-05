@@ -154,6 +154,7 @@
 
 	function del() {
 		if (!$isReady || !$selectedShape) return;
+		console.log($selectedShape);
 		$selectedShape!.destroy();
 		resetSelectedShape();
 		$transformer!.nodes([]);
