@@ -1,13 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-	doc,
-	collection,
-	getDocs,
-	writeBatch,
-	serverTimestamp
-} from 'firebase/firestore';
-import { getDb } from '$lib/database/firebase';
+import { FieldValue } from 'firebase-admin/firestore';
+import { db } from '$lib/server/admin';
 import { generateEmbedding } from '$lib/server/embedding';
 import type { ShapeData } from '$lib/models/shapes';
 
@@ -424,11 +418,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing mapName or shapes' }, { status: 400 });
 		}
 
-		const db = getDb();
-		const shapesCollectionRef = collection(db, 'maps', mapName, 'shapes');
+		const shapesCollectionRef = db.collection('maps').doc(mapName).collection('shapes');
 
 		// 1. Get existing shapes
-		const querySnapshot = await getDocs(shapesCollectionRef);
+		const querySnapshot = await shapesCollectionRef.get();
 		const existingShapesMap = new Map<string, ShapeData>();
 		querySnapshot.forEach(doc => {
 			existingShapesMap.set(doc.id, doc.data() as ShapeData);
@@ -437,7 +430,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		// 2. Generate embeddings for each shape
 		const embeddingPromises = newShapes.map(async (shape) => {
 			const existingShape = existingShapesMap.get(shape.id);
-
 			const currentContent = `${shape.text || ''}: ${shape.description || '내용 없음'}`;
 			console.log(`[DEBUG] For Shape ID ${shape.id}, currentContent is: "${currentContent}"`);
 			const existingContent = existingShape ? `${existingShape.text || ''}: ${existingShape.description || '내용 없음'}` : null;
@@ -446,16 +438,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			if (needsEmbedding) {
 				console.log(`[Embedding] Generating for shape ID: ${shape.id}, Content: "${currentContent}"`);
-				// Use the combined 'currentContent' for embedding
 				const embedding = await generateEmbedding(currentContent);
 				console.log(`[Embedding] Result (sample) for ${shape.id}:`, embedding.slice(0, 5));
 				return {
 					...shape,
-					description_embedding: embedding,
-					description_edited_at: serverTimestamp()
+					description_embedding: FieldValue.vector(embedding),
+					description_edited_at: FieldValue.serverTimestamp()
 				};
 			} else {
-				// IMPORTANT: Preserve existing embedding if no change is needed
 				return {
 					...shape,
 					description_embedding: existingShape.description_embedding,
@@ -467,17 +457,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		const shapesToSave = await Promise.all(embeddingPromises);
 
 		// 3. Batch write all changes
-		const batch = writeBatch(db);
+		const batch = db.batch();
 		const newShapeIds = new Set(newShapes.map((s) => s.id));
 
 		for (const shape of shapesToSave) {
-			const shapeDocRef = doc(db, 'maps', mapName, 'shapes', shape.id);
+			const shapeDocRef = shapesCollectionRef.doc(shape.id);
 			batch.set(shapeDocRef, shape, { merge: true });
 		}
 
 		for (const id of existingShapesMap.keys()) {
 			if (!newShapeIds.has(id)) {
-				const shapeDocRef = doc(db, 'maps', mapName, 'shapes', id);
+				const shapeDocRef = shapesCollectionRef.doc(id);
 				batch.delete(shapeDocRef);
 			}
 		}

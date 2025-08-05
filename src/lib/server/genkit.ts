@@ -16,4 +16,4 @@ export const ai = genkit({
 });
 
 // Export the embedder reference separately for convenience
-export const textEmbedding = googleAI.embedder('embedding-001');
+export const textEmbedding = googleAI.embedder('text-embedding-004');

@@ -1,126 +1,135 @@
-// src/routes/api/retriever/+server.ts
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { ai, textEmbedding } from '$lib/server/genkit';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { getDb } from '$lib/database/firebase';
-import type { ShapeData } from '$lib/models/shapes';
+import { json, type RequestEvent } from '@sveltejs/kit';
+import { configure } from '@genkit-ai/core';
+import { defineFlow, runFlow, startFlowsServer } from '@genkit-ai/flow';
+import { googleAI } from '@genkit-ai/googleai';
+import { firebase } from '@genkit-ai/firebase'; // 올바른 임포트 경로
+import { defineRetriever, Document, retrieve } from '@genkit-ai/ai/retriever';
+import { z } from 'zod';
+import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
-// Helper function to calculate cosine similarity
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-	if (!vecA || !vecB || vecA.length !== vecB.length) {
-		return 0;
-	}
-	const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
-	const magA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
-	const magB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
-	if (magA === 0 || magB === 0) {
-		return 0;
-	}
-	const similarity = dotProduct / (magA * magB);
-	return isNaN(similarity) ? 0 : similarity;
-}
+import { db } from '$lib/server/admin';
+import { generateEmbedding } from '$lib/server/embedding';
 
-// Helper to extract the raw embedding array, handling both old and new data formats
-function getEmbeddingVector(embeddingData: any): number[] | null {
-	if (Array.isArray(embeddingData)) {
-		if (embeddingData.length > 0 && typeof embeddingData[0] === 'number') {
-			return embeddingData;
+// Genkit 설정
+configure({
+	plugins: [
+		googleAI(),
+		firebase()
+	],
+});
+
+// 리트리버 설정을 위한 스키마 정의
+const retrieverConfigSchema = z.object({
+	mapName: z.string(),
+	limit: z.number().optional().default(5)
+});
+
+// 커스텀 Firestore 리트리버 정의
+const firestoreRetriever = defineRetriever(
+	{
+		name: 'smap-firestore-retriever',
+		configSchema: retrieverConfigSchema
+	},
+	async (query: Document, options: z.infer<typeof retrieverConfigSchema>) => {
+		const queryText = query.text; // .text는 속성이므로 ()를 제거합니다.
+		if (!queryText) {
+			return { documents: [] };
 		}
-		if (embeddingData.length > 0 && typeof embeddingData[0] === 'object' && embeddingData[0]?.embedding) {
-			return embeddingData[0].embedding;
-		}
-	}
-	return null;
-}
 
+		const { mapName, limit } = options;
 
-export const POST: RequestHandler = async ({ request }) => {
-	try {
-		const { query: userQuery, mapName } = (await request.json()) as {
-			query: string;
-			mapName: string;
-		};
+		const queryEmbedding = await generateEmbedding(queryText);
+		const shapesCollectionRef = (db as Firestore).collection(`maps/${mapName}/shapes`);
 
-		if (!userQuery || !mapName) {
-			return json({ error: 'Missing query or mapName' }, { status: 400 });
-		}
-		console.log(`[Retriever] Searching for '${userQuery}' in map '${mapName}'`);
-
-		// 1. Embed the user's query
-		const queryEmbedding = await ai.embed({
-			embedder: textEmbedding,
-			content: userQuery
+		const vectorQuery = (shapesCollectionRef as any).findNearest('description_embedding', queryEmbedding, {
+			limit: limit,
+			distanceMeasure: 'COSINE'
 		});
-		const queryVector = getEmbeddingVector(queryEmbedding);
 
-		if (!queryVector) {
-			throw new Error('Failed to generate a valid query embedding.');
+		const snapshot = await vectorQuery.get();
+
+		if (snapshot.empty) {
+			return { documents: [] };
 		}
-		
-		console.log(`[Retriever] Query embedding (sample):`, queryVector.slice(0, 5));
 
-		// 2. Load shapes and check for duplicate embeddings
-		const db = getDb();
-		const shapesCollectionRef = collection(db, 'maps', mapName, 'shapes');
-		const q = query(shapesCollectionRef, where('description_embedding', '!=', null));
-		const querySnapshot = await getDocs(q);
-		
-		const shapes = querySnapshot.docs.map(doc => doc.data() as ShapeData);
-		console.log(`[Retriever] Found ${shapes.length} shapes with embedding field.`);
+		const documents = snapshot.docs.map((doc: QueryDocumentSnapshot) => {
+			const data = doc.data();
+			const similarity = 1 - (doc as any).distance;
 
-		// Diagnostic check for duplicate embeddings
-		const embeddingHashes = new Set();
-		let duplicateCount = 0;
-		shapes.forEach(shape => {
-			const vector = getEmbeddingVector(shape.description_embedding);
-			if(vector && vector.length > 0) {
-				const hash = vector.join(',');
-				if (embeddingHashes.has(hash)) {
-					duplicateCount++;
-				}
-				embeddingHashes.add(hash);
+			return Document.fromText(data.description || '', {
+				id: doc.id,
+				text: data.text,
+				description: data.description,
+				similarity: isNaN(similarity) ? 0 : similarity
+			});
+		});
+
+		return { documents };
+	}
+);
+
+// 검색 Flow의 입출력 스키마 정의
+const retrieverFlowInputSchema = z.object({
+	query: z.string(),
+	mapName: z.string()
+});
+
+const retrieverFlowOutputSchema = z.object({
+	results: z.array(
+		z.object({
+			id: z.string().optional(),
+			text: z.string().optional(),
+			description: z.string().optional(),
+			similarity: z.number()
+		})
+	)
+});
+
+// 메인 검색 Flow 정의
+const retrieverFlow = defineFlow(
+	{
+		name: 'retrieverFlow',
+		inputSchema: retrieverFlowInputSchema,
+		outputSchema: retrieverFlowOutputSchema
+	},
+	async (input) => {
+		const retrievedDocs = await retrieve({
+			retriever: firestoreRetriever,
+			query: input.query,
+			options: {
+				mapName: input.mapName,
+				limit: 5
 			}
 		});
-		if (duplicateCount > 0) {
-			console.warn(`[Retriever] WARNING: Found ${duplicateCount} duplicate embeddings. This may be caused by short or non-descriptive content. Search results may be inaccurate.`);
-		}
 
-		// 3. Calculate similarities
-		const similarities = shapes
-			.map((shape) => {
-				const docVector = getEmbeddingVector(shape.description_embedding);
-				if (!docVector) return null;
-				
-				return {
-					shape,
-					similarity: cosineSimilarity(queryVector, docVector)
-				};
-			})
-			.filter(Boolean);
+		const results = retrievedDocs.map((doc) => ({
+			id: doc.metadata?.id,
+			text: doc.metadata?.text,
+			description: doc.metadata?.description,
+			similarity: doc.metadata?.similarity || 0
+		}));
 
-		if (similarities.length === 0) {
-			return json({ results: [] });
-		}
-
-		// 4. Sort by similarity and take top 3
-		const topResults = similarities
-			.sort((a, b) => b!.similarity - a!.similarity)
-			.slice(0, 3)
-			.map((result) => ({
-				id: result!.shape.id,
-				text: result!.shape.text,
-				description: result!.shape.description,
-				similarity: result!.similarity
-			}));
-		
-		console.log(`[Retriever] Returning ${topResults.length} results.`);
-		return json({ results: topResults });
-	} catch (error: any) {
-		console.error('Retriever API Error:', error.message);
-		if (error.cause) {
-			console.error('Underlying cause:', error.cause);
-		}
-		return json({ error: error.message, cause: error.cause }, { status: 500 });
+		return { results };
 	}
-};
+);
+
+// SvelteKit POST 핸들러
+export async function POST(event: RequestEvent) {
+	try {
+		const { query, mapName } = await event.request.json();
+
+		if (!query || !mapName) {
+			return json({ error: 'Query and mapName are required.' }, { status: 400 });
+		}
+
+		const flowResult = await runFlow(retrieverFlow, { query, mapName });
+
+		return json(flowResult);
+	} catch (error: any) {
+		console.error('[Genkit Retriever API] An unexpected error occurred:', error);
+		return json({ error: 'An unexpected error occurred.', details: error.message }, { status: 500 });
+	}
+}
+
+// 로컬 개발용 Genkit UI 서버 시작
+startFlowsServer();

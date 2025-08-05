@@ -113,8 +113,9 @@
             <label for="description" class="label">설명</label>
             <textarea
                 id="description"
-                bind:value={descriptionInput}
-                on:input={handleDescriptionChange}
+                value={descriptionInput}
+                oninput={(e) => (descriptionInput = e.currentTarget.value)}
+                onblur={handleDescriptionChange}
                 disabled={!$selectedShape}
                 class="textarea"
                 rows="4"

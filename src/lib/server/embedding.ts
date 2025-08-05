@@ -1,5 +1,5 @@
 import { ai, textEmbedding } from '$lib/server/genkit';
-import type { Embedding } from '@genkit-ai/ai/embedding';
+import type { Embedding } from '@genkit-ai/ai';
 
 /**
  * Generates an embedding vector for the given content.
@@ -13,16 +13,17 @@ export async function generateEmbedding(content: string): Promise<number[]> {
 	}
 
 	try {
-		const embeddingResponse: Embedding[] = await ai.embed({
+		const embeddingResponse = await ai.embed({
 			embedder: textEmbedding,
 			content: content
-		});
+		}) as Embedding[];
 
 		// Extract the numeric vector from the response object.
-		if (embeddingResponse.length > 0 && embeddingResponse[0].embedding) {
+		if (Array.isArray(embeddingResponse) && embeddingResponse.length > 0 && embeddingResponse[0].embedding) {
 			return embeddingResponse[0].embedding;
 		}
 
+		console.warn('Warning: Embedding was not found in the API response.');
 		// Return an empty array if something went wrong
 		return [];
 	} catch (error: any) {
