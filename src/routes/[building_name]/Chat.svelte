@@ -7,18 +7,24 @@
         { id: 1, text: "안녕하세요! smap에 대해 무엇이든 물어보세요.", sender: "ai" },
     ]);
     let newMessage = $state("");
-    let isLoading = $state(false);
+    let isChatLoading = $state(false);
 
     // Retriever state
+    type RetrieverResult = {
+        id: string;
+        text?: string;
+        description?: string;
+        similarity: number;
+    };
     let retrieverQuery = $state("");
     let isRetrieving = $state(false);
-    let retrieverResults = $state<any[]>([]);
+    let retrieverResults = $state<RetrieverResult[] | null>(null);
     let retrieverError = $state<string | null>(null);
 
     const mapName = $page.params.building_name;
 
     async function sendMessage() {
-        if (newMessage.trim() === "" || isLoading) return;
+        if (newMessage.trim() === "" || isChatLoading) return;
         
         const userMessage = { id: Date.now(), text: newMessage, sender: "user" };
         messages.push(userMessage);
@@ -26,14 +32,12 @@
         const historyForAI = [...messages];
         
         newMessage = "";
-        isLoading = true;
+        isChatLoading = true;
 
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ history: historyForAI }),
             });
 
@@ -54,7 +58,7 @@
             console.error("Failed to get AI response:", error);
             messages.push({ id: Date.now() + 1, text: "죄송합니다. 답변을 생성하는 데 문제가 발생했습니다.", sender: "ai" });
         } finally {
-            isLoading = false;
+            isChatLoading = false;
         }
     }
 
@@ -63,7 +67,7 @@
 
         isRetrieving = true;
         retrieverError = null;
-        retrieverResults = [];
+        retrieverResults = null; // Reset results before new search
 
         try {
             const response = await fetch('/api/retriever', {
@@ -105,24 +109,28 @@
             </button>
         </div>
 
-        {#if retrieverError}
-            <p class="error">Error: {retrieverError}</p>
-        {/if}
-
-        {#if retrieverResults.length > 0}
-            <div class="results">
-                <h3>Top 3 Results:</h3>
-                <ul>
-                    {#each retrieverResults as result (result.id)}
-                        <li>
-                            <strong>Text:</strong> {result.text || 'N/A'}<br>
-                            <strong>Description:</strong> {result.description}<br>
-                            <small>Similarity: {result.similarity.toFixed(4)}</small>
-                        </li>
-                    {/each}
-                </ul>
-            </div>
-        {/if}
+        <div class="results-container">
+            {#if isRetrieving}
+                <p>Searching for results...</p>
+            {:else if retrieverError}
+                <p class="error">Error: {retrieverError}</p>
+            {:else if retrieverResults && retrieverResults.length > 0}
+                <div class="results">
+                    <h3>Top Results:</h3>
+                    <ul>
+                        {#each retrieverResults as result (result.id)}
+                            <li>
+                                <strong>Text:</strong> {result.text || 'N/A'}<br>
+                                <strong>Description:</strong> {result.description}<br>
+                                <small>Similarity: {result.similarity?.toFixed(4) ?? 'N/A'}</small>
+                            </li>
+                        {/each}
+                    </ul>
+                </div>
+            {:else if retrieverResults}
+                <p>No results found. Try a different query or make sure you have saved shapes with descriptions.</p>
+            {/if}
+        </div>
     </div>
 
     <div class="chat-container">
@@ -132,7 +140,7 @@
                     {@html message.text.replace(/\n/g, '<br>')}
                 </div>
             {/each}
-            {#if isLoading}
+            {#if isChatLoading}
                 <div class="message ai typing" transition:fade>
                     <span></span><span></span><span></span>
                 </div>
@@ -142,11 +150,11 @@
             <input 
                 type="text" 
                 bind:value={newMessage} 
-                placeholder={isLoading ? "AI가 답변 중입니다..." : "메시지를 입력하세요..."}
+                placeholder={isChatLoading ? "AI가 답변 중입니다..." : "메시지를 입력하세요..."}
                 onkeydown={(e) => e.key === 'Enter' && sendMessage()}
-                disabled={isLoading}
+                disabled={isChatLoading}
             >
-            <button onclick={sendMessage} disabled={isLoading}>전송</button>
+            <button onclick={sendMessage} disabled={isChatLoading}>전송</button>
         </div>
     </div>
 </div>
@@ -192,21 +200,24 @@
             }
         }
 
-        .error {
-            color: #d9534f;
-        }
-
-        .results {
-            ul {
-                list-style-type: none;
-                padding: 0;
+        .results-container {
+            min-height: 50px; /* Prevent layout shift */
+            .error {
+                color: #d9534f;
             }
-            li {
-                background: #fff;
-                border: 1px solid #ddd;
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 10px;
+
+            .results {
+                ul {
+                    list-style-type: none;
+                    padding: 0;
+                }
+                li {
+                    background: #fff;
+                    border: 1px solid #ddd;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 10px;
+                }
             }
         }
     }
@@ -215,6 +226,7 @@
         display: flex;
         flex-direction: column;
         flex-grow: 1;
+        overflow-y: auto;
         width: 100%;
         max-width: 800px;
         margin: 0 auto;

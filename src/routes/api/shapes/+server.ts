@@ -1,5 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import {
+	doc,
+	collection,
+	getDocs,
+	writeBatch,
+	serverTimestamp
+} from 'firebase/firestore';
+import { getDb } from '$lib/database/firebase';
+import { generateEmbedding } from '$lib/server/embedding';
+import type { ShapeData } from '$lib/models/shapes';
 
 function genId(): string {
 	return `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -403,7 +413,81 @@ export const GET: RequestHandler = async () => {
             text: '3-3'
         }
     ];
-    
-
 	return json(shapes);
-}; 
+};
+
+export const POST: RequestHandler = async ({ request }) => {
+	try {
+		const { mapName, shapes: newShapes } = (await request.json()) as { mapName: string; shapes: ShapeData[] };
+
+		if (!mapName || !newShapes) {
+			return json({ error: 'Missing mapName or shapes' }, { status: 400 });
+		}
+
+		const db = getDb();
+		const shapesCollectionRef = collection(db, 'maps', mapName, 'shapes');
+
+		// 1. Get existing shapes
+		const querySnapshot = await getDocs(shapesCollectionRef);
+		const existingShapesMap = new Map<string, ShapeData>();
+		querySnapshot.forEach(doc => {
+			existingShapesMap.set(doc.id, doc.data() as ShapeData);
+		});
+
+		// 2. Generate embeddings for each shape
+		const embeddingPromises = newShapes.map(async (shape) => {
+			const existingShape = existingShapesMap.get(shape.id);
+
+			const currentContent = `${shape.text || ''}: ${shape.description || '내용 없음'}`;
+			console.log(`[DEBUG] For Shape ID ${shape.id}, currentContent is: "${currentContent}"`);
+			const existingContent = existingShape ? `${existingShape.text || ''}: ${existingShape.description || '내용 없음'}` : null;
+
+			const needsEmbedding = !existingShape || currentContent !== existingContent || !existingShape.description_embedding;
+
+			if (needsEmbedding) {
+				console.log(`[Embedding] Generating for shape ID: ${shape.id}, Content: "${currentContent}"`);
+				// Use the combined 'currentContent' for embedding
+				const embedding = await generateEmbedding(currentContent);
+				console.log(`[Embedding] Result (sample) for ${shape.id}:`, embedding.slice(0, 5));
+				return {
+					...shape,
+					description_embedding: embedding,
+					description_edited_at: serverTimestamp()
+				};
+			} else {
+				// IMPORTANT: Preserve existing embedding if no change is needed
+				return {
+					...shape,
+					description_embedding: existingShape.description_embedding,
+					description_edited_at: existingShape.description_edited_at
+				};
+			}
+		});
+
+		const shapesToSave = await Promise.all(embeddingPromises);
+
+		// 3. Batch write all changes
+		const batch = writeBatch(db);
+		const newShapeIds = new Set(newShapes.map((s) => s.id));
+
+		for (const shape of shapesToSave) {
+			const shapeDocRef = doc(db, 'maps', mapName, 'shapes', shape.id);
+			batch.set(shapeDocRef, shape, { merge: true });
+		}
+
+		for (const id of existingShapesMap.keys()) {
+			if (!newShapeIds.has(id)) {
+				const shapeDocRef = doc(db, 'maps', mapName, 'shapes', id);
+				batch.delete(shapeDocRef);
+			}
+		}
+
+		await batch.commit();
+
+		return json({ success: true, updatedCount: shapesToSave.length });
+
+	} catch (error: any) {
+		console.error('API Error in /api/shapes:', error);
+		return json({ error: 'Failed to save shapes.', details: error.message }, { status: 500 });
+	}
+};

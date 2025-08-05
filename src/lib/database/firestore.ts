@@ -16,11 +16,10 @@ import {
 import {
 	signInWithPopup,
 	signOut as firebaseSignOut,
-	GoogleAuthProvider,
-	type User
+	GoogleAuthProvider
 } from 'firebase/auth';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, auth, storage } from './firebase'; // <- 변경된 부분
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getDb, getAuth, getStorage } from './firebase';
 import type { ShapeData } from '../models/shapes';
 import { error } from '@sveltejs/kit';
 
@@ -29,7 +28,7 @@ const provider = new GoogleAuthProvider();
 
 export async function signInWithGoogle() {
 	try {
-		const result = await signInWithPopup(auth, provider);
+		const result = await signInWithPopup(getAuth(), provider);
 		console.log('Sign-in successful, user:', result.user);
 	} catch (error) {
 		console.error('Sign-in failed:', error);
@@ -37,40 +36,55 @@ export async function signInWithGoogle() {
 }
 
 export function signOut() {
-	firebaseSignOut(auth);
+	firebaseSignOut(getAuth());
 }
 
 // --- Firestore ---
 
+/**
+ * Saves the shapes for a map by calling the dedicated API endpoint.
+ * @param mapName The name of the map.
+ * @param shapes The array of shapes to save.
+ */
 export async function saveShapes(mapName: string, shapes: ShapeData[]): Promise<void> {
-	await fetch('/api/embedding', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({ mapName, shapes })
-	});
+	try {
+		const response = await fetch('/api/shapes', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ mapName, shapes })
+		});
+
+		if (!response.ok) {
+			const errorResult = await response.json();
+			throw new Error(errorResult.error || 'Failed to save shapes via API');
+		}
+	} catch (err) {
+		console.error('Error in saveShapes:', err);
+		// Optionally re-throw or handle the error for the UI
+		throw err;
+	}
 }
 
-export async function loadShapes(
-    mapName: string,
-    fetcher: typeof fetch
-): Promise<ShapeData[]> {
-	const docRef = doc(db, 'mapName', mapName);
-	const docSnap = await getDoc(docRef);
+/**
+ * Loads all shapes for a given map from the 'shapes' subcollection.
+ * @param mapName The name of the map.
+ * @returns A promise that resolves to an array of ShapeData.
+ */
+export async function loadShapes(mapName: string): Promise<ShapeData[]> {
+	const db = getDb();
+	const shapesCollectionRef = collection(db, 'maps', mapName, 'shapes');
+	const querySnapshot = await getDocs(shapesCollectionRef);
 
-	if (docSnap.exists()) {
-		console.log(`Shapes loaded for ${mapName} from Firestore.`);
-		return docSnap.data().shapes || [];
-	} else {
-		console.log(`No document found for ${mapName}, returning default shapes via API.`);
-		const res = await fetcher('/api/shapes');
-		if (!res.ok) {
-			console.error('Failed to fetch fallback shapes');
-			return [];
-		}
-		return res.json();
+	if (querySnapshot.empty) {
+		console.log(`No shapes found for map: ${mapName}`);
+		return [];
 	}
+
+	const shapes = querySnapshot.docs.map((doc) => doc.data() as ShapeData);
+	console.log(`Loaded ${shapes.length} shapes for map: ${mapName}`);
+	return shapes;
 }
 
 export interface Post {
@@ -88,6 +102,7 @@ export interface Post {
 }
 
 export async function savePost(postData: Omit<Post, 'created_at' | 'id'>): Promise<string> {
+	const db = getDb();
 	try {
 		const docRef = await addDoc(collection(db, 'posts'), {
 			...postData,
@@ -107,6 +122,7 @@ export async function getPosts(options: {
 	limit: number;
 	skip: number;
 }): Promise<Post[]> {
+	const db = getDb();
 	const postsCol = collection(db, 'posts');
 
 	const queryConstraints: QueryConstraint[] = [
@@ -152,6 +168,7 @@ export async function getAllPosts(options: {
 	limit: number;
 	skip: number;
 }): Promise<Post[]> {
+	const db = getDb();
 	const postsCol = collection(db, 'posts');
 
 	const queryConstraints: QueryConstraint[] = [
@@ -191,6 +208,7 @@ export async function getAllPosts(options: {
 }
 
 export async function getEvents(options: { building_name: string }): Promise<Post[]> {
+	const db = getDb();
 	const postsCol = collection(db, 'posts');
 	const q = query(
 		postsCol,
@@ -214,6 +232,7 @@ export async function getEvents(options: { building_name: string }): Promise<Pos
 }
 
 export async function getPost(post_uid: string): Promise<Post | null> {
+	const db = getDb();
 	const docRef = doc(db, 'posts', post_uid);
 	const docSnap = await getDoc(docRef);
 
@@ -231,6 +250,7 @@ export async function getPost(post_uid: string): Promise<Post | null> {
 }
 
 export async function uploadImage(file: File) {
+	const storage = getStorage();
     if (!file) throw new Error('파일 없음');
     
     try {
@@ -245,6 +265,7 @@ export async function uploadImage(file: File) {
 }
 
 export async function deleteImage(imageUrl: string) {
+	const storage = getStorage();
     try {
         const storageRef = ref(storage, imageUrl);
         await deleteObject(storageRef);
