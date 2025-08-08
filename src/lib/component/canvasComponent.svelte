@@ -43,15 +43,15 @@
 
 	// 선택된 도형 위치로 화면 이동
 	function moveToSelectedShape() {
-		if (!$stage || !$selectedShape || $editable) return;
+		// if (!$stage || !$selectedShape || $editable) return;
 
-		// 부드러운 애니메이션으로 이동
-		$stage.to({
-			x: $stage.width() / 2 - $selectedShape.x(),
-			y: $stage.height() / 2 - $selectedShape.y(),
-			duration: 0.5, // 0.5초 애니메이션
-			easing: Konva.Easings.EaseInOut
-		});
+		// // 부드러운 애니메이션으로 이동
+		// $stage.to({
+		// 	x: $stage.width() / 2 - $selectedShape.x(),
+		// 	y: $stage.height() / 2 - $selectedShape.y(),
+		// 	duration: 0.5, // 0.5초 애니메이션
+		// 	easing: Konva.Easings.EaseInOut
+		// });
 	}
 
 	onMount(() => {
@@ -157,8 +157,8 @@
 <div class="canvas-container" bind:this={canvasContainer}></div>
 
 <SideBarComponent />
+<SnapUtil />
 {#if $editable}
-    <SnapUtil />
     <ShortCutComponent />
 {/if}
 
